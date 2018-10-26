@@ -16,7 +16,7 @@ class Robot
 		-> trig      | The trig pin of the ultrasonic sensor
 		-> echo      | The echo pin of the ultrasonic sensor
 		-> motorPins | An array contaning all the motor motorPins
-					       | Ordered: Top-left Bottom-left, Top-right, Bottom-right
+					 | Ordered: Top-left Bottom-left, Top-right, Bottom-right
 		-> distances | An array cantaining 180 different distance points
 	*/
 {
@@ -35,12 +35,12 @@ class Robot
 			This function initializes all the pins in the robot
 
 			@param: byte motors[4] ~ This is an array of the pins of the motors
-								             ~ the pins should be orderd like should
-								             ~ motor 1 a, motor 1 b, motor 2 a, motor 2 b 
-			
+								   ~ the pins should be orderd like should
+								   ~ motor 1 a, motor 1 b, motor 2 a, motor 2 b 
+
 			@param: byte misc[3]   ~ This is an array of the misc pins
-								             ~ it contains the following pins in orderd
-								             ~ servo pin, trig pin, echo pin
+								   ~ it contains the following pins in orderd
+								   ~ servo pin, trig pin, echo pin
 
 		*/
 		{
