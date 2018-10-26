@@ -362,7 +362,7 @@ class Robot
 };
 
 
-byte definedMotors[4] = {8,9,10,11};
+byte definedMotors[4] = {8, 9, 10, 11};
 byte definedMisc[3] = {3, 4, 5};
 
 // Creates instance of Robot named mike
