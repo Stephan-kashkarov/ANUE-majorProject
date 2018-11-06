@@ -165,7 +165,7 @@ class Robot
 			digitalWrite(this->trig, HIGH);
 			delay(1);
 			digitalWrite(this->trig, LOW);
-			unsigned int pulse = pulseIn(this->echo, HIGH);
+			int pulse = pulseIn(this->echo, HIGH);
 			pulse = pulse / 29 / 2;
 			this->distances[degree] = pulse;
 			return pulse;
@@ -194,12 +194,12 @@ class Robot
 				digitalWrite(this->trig, HIGH);
 				delay(1);
 				digitalWrite(this->trig, LOW);
-				unsigned int pulse = pulseIn(this->echo, HIGH);
+				int pulse = pulseIn(this->echo, HIGH);
 				pulse = pulse / 29 / 2;
 				pulseAvg += pulse;
 				pulse = 0;
 			}
-			pulseAvg /= 3;
+			pulseAvg = pulseAvg / 3;
 			this->distances[degree] = pulseAvg;
 			return pulseAvg;
 		}
@@ -221,8 +221,10 @@ class Robot
 			{
 				this->servo.write(0);
 			}
-			for (byte i = 0; i <= 180; ++i)
+			delay(100);
+			for (byte i = 0; i < 180; ++i)
 			{
+				delay(10);
 				distance = this->quickPulse(i);
 				this->distances[i] = distance;
 				if (distance < 3){
@@ -247,8 +249,10 @@ class Robot
 			{
 				this->servo.write(0);
 			}
-			for (byte i = 0; i <= 180; ++i)
+			delay(100);
+			for (byte i = 0; i < 180; ++i)
 			{
+				delay(10);
 				distance = this->longPulse(i);
 				this->distances[i] = distance;
 				if (distance < 3){
@@ -273,7 +277,7 @@ class Robot
 				if (Serial.available() > 0)
 				{
 					input = Serial.read();
-          Serial.println("Input Recieved: ");
+					Serial.println("Input Recieved: ");
 					Serial.println(input);
 					return input;
 				}
