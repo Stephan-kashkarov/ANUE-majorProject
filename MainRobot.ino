@@ -350,19 +350,6 @@ class Robot
 		{
 
 		}
-		void debug()
-		/*
-			Robot::debug
-
-			This method enables the debug menu through bluetooth
-			
-			Enabled options:
-				-> print distances
-				-> TODO
-		*/
-		{
-
-		}
 };
 
 
