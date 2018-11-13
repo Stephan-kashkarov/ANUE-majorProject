@@ -4,6 +4,12 @@
 	in: October 2018
 */
 #include <Servo.h>
+#include <SoftwareSerial.h>
+
+// Variable definition
+byte definedMotors[4] = {8, 9, 10, 11}; // motors 
+byte definedMisc[3] = {3, 4, 5}; // servo, trig, echo
+SoftwareSerial bluetooth(12, 13); // bluetooth
 
 class Robot
 /*
@@ -20,7 +26,7 @@ class Robot
 		-> distances | An array cantaining 180 different distance points
 	*/
 {
-	private:
+	public:
 		Servo servo;
 		byte trig;
 		byte echo;
@@ -79,6 +85,10 @@ class Robot
 			digitalWrite(this->motorPins[2], HIGH);
 			digitalWrite(this->motorPins[3], LOW);
 			delay(t);
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], LOW);
 		}
 
 		void right(int t)
@@ -96,7 +106,10 @@ class Robot
 			digitalWrite(this->motorPins[2], LOW);
 			digitalWrite(this->motorPins[3], HIGH);
 			delay(t);
-				
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], LOW);
 		}
 
 		void forward(int t)
@@ -108,6 +121,10 @@ class Robot
 			@param int t ~ The time that the operation will go for in milliseconds
 		*/
 		{
+			digitalWrite(this->motorPins[0], HIGH);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], HIGH);
+			digitalWrite(this->motorPins[3], LOW);
 			unsigned long timer = millis();
 			while ((timer+t) > millis())
 			{
@@ -116,11 +133,11 @@ class Robot
 					Serial.println("Movement Obstructed");
 					break;
 				}
-				digitalWrite(this->motorPins[0], HIGH);
-				digitalWrite(this->motorPins[1], LOW);
-				digitalWrite(this->motorPins[2], HIGH);
-				digitalWrite(this->motorPins[3], LOW);
 			}
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], LOW);
 		}
 
 		void back(int t)
@@ -132,6 +149,10 @@ class Robot
 			@param int t  The time that the operation will go for in milliseconds
 		*/
 		{
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], HIGH);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], HIGH);
 			unsigned long timer = millis();
 			while ((timer+t) > millis())
 			{
@@ -139,12 +160,11 @@ class Robot
 					Serial.println("Movement Obstructed");
 					break;
 				}
-				digitalWrite(this->motorPins[0], LOW);
-				digitalWrite(this->motorPins[1], HIGH);
-				digitalWrite(this->motorPins[2], LOW);
-				digitalWrite(this->motorPins[3], HIGH);
 			}
-			
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], LOW);
 		}
 
 		unsigned int quickPulse(byte degree)
@@ -158,7 +178,8 @@ class Robot
 			returns: unsinged int distance
 		*/
 		{
-			while (this->servo.read() != degree){
+			while (this->servo.read() != degree)
+			{
 				this->servo.write(degree);
 			}
 			digitalWrite(this->trig, LOW);
@@ -217,19 +238,33 @@ class Robot
 		*/
 		{
 			unsigned int distance;
+			unsigned int distance2;
 			while (this->servo.read() != 0)
 			{
 				this->servo.write(0);
 			}
-			delay(100);
-			for (byte i = 0; i < 180; ++i)
+			delay(1000);
+			for (byte i = 0; i < 179; ++i)
 			{
-				delay(10);
-				distance = this->quickPulse(i);
-				this->distances[i] = distance;
-				if (distance < 3){
-					return i;
+				while (this->servo.read() != i)
+				{
+					this->servo.write(i);
 				}
+				distance = this->quickPulse(i);
+				delay(10);
+				distance2 = this->quickPulse(i);
+				if (abs(distance - distance2) > 20)
+				{
+					return this->scanQuickPulse();
+				}
+				else
+				{
+					this->distances[i] = (distance + distance2) / 2;
+					return (distance + distance2) / 2
+				}
+				// if (distance < 3){
+				// 	return i;
+				// }
 			}
 		}
 
@@ -249,10 +284,13 @@ class Robot
 			{
 				this->servo.write(0);
 			}
-			delay(100);
-			for (byte i = 0; i < 180; ++i)
+			delay(1000);
+			for (byte i = 0; i < 179; ++i)
 			{
-				delay(10);
+				while (this->servo.read() != i)
+				{
+					this->servo.write(i);
+				}
 				distance = this->longPulse(i);
 				this->distances[i] = distance;
 				if (distance < 3){
@@ -274,13 +312,22 @@ class Robot
 			int input;
 			while (true)
 			{
-				if (Serial.available() > 0)
+				bluetooth.println("Looking for input!");
+				if (bluetooth.available() > 0)
+				{
+					input = bluetooth.read();
+					bluetooth.println("Input Recieved: ");
+					bluetooth.println(input);
+					return input;
+				}
+				else if (Serial.available() > 0)
 				{
 					input = Serial.read();
 					Serial.println("Input Recieved: ");
 					Serial.println(input);
 					return input;
 				}
+				delay(100);
 			}
 		}
 
@@ -299,7 +346,6 @@ class Robot
 				-> 2  ~ turn Left
 				-> 3  ~ turn Right
 				-> 4  ~ enter pathfinding mode
-				-> 5  ~ enable debug mode
 				-> 10 ~ pass
 		*/
 		{
@@ -329,10 +375,6 @@ class Robot
 							this->pathfinding();
 							state = -1;
 							break;
-						case 5:
-							this->debug();
-							state = -1;
-							break;
 
 						default:
 							break;
@@ -353,20 +395,35 @@ class Robot
 };
 
 
-byte definedMotors[4] = {8, 9, 10, 11};
-byte definedMisc[3] = {3, 4, 5};
 
 // Creates instance of Robot named mike
 Robot mike;
 
-
 void setup()
 {
-	mike->init(definedMotors, definedMisc);
-	mike->remoteControl();
+	Serial.begin(9600);
+	bluetooth.begin(9600);
+	bluetooth.println("Hi");
+	Serial.println("init testing");
+	mike.init(definedMotors, definedMisc);
+	// mike.remoteControl();
+	// mike.scanLongPulse();
 }
 
 void loop()
 {
-	mike->pathfinding();
+	// for (byte i = 0; i < 179; ++i)
+	// {
+	// 	bluetooth.print("Distance as degree: ");
+	// 	bluetooth.print(i);
+	// 	bluetooth.print(" is ");
+	// 	bluetooth.println(mike.distances[i]);
+	// }
+	bluetooth.println(mike.quickPulse(90));
+	delay(10);
+
+	// digitalWrite(mike.trig, HIGH);
+	// delay(1);
+	// digitalWrite(mike.trig, LOW);
+	// bluetooth.println(pulseIn(mike.echo, HIGH));
 }
