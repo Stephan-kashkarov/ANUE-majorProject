@@ -3,12 +3,16 @@
 	by: Stephan Kashkarov 
 	in: October 2018
 */
+// debug
+#define private public
+
+// imports
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
 // Variable definition
 byte definedMotors[4] = {8, 9, 10, 11}; // motors 
-byte definedMisc[3] = {3, 4, 5}; // servo, trig, echo
+byte definedMisc[4] = {3, 4, 5, 2}; // servo, trig, echo, servo power
 SoftwareSerial bluetooth(12, 13); // bluetooth
 
 class Robot
@@ -26,15 +30,16 @@ class Robot
 		-> distances | An array cantaining 180 different distance points
 	*/
 {
-	public:
+	private:
 		Servo servo;
+		byte servoPin;
 		byte trig;
 		byte echo;
 		byte motorPins[4];
 		int distances [180];
 
 	public:
-		void init(byte motors[4], byte misc[3])
+		void init(byte motors[4], byte misc[4])
 		/*
 			Robot::init
 
@@ -44,9 +49,9 @@ class Robot
 								   ~ the pins should be orderd like should
 								   ~ motor 1 a, motor 1 b, motor 2 a, motor 2 b 
 
-			@param: byte misc[3]   ~ This is an array of the misc pins
+			@param: byte misc[4]   ~ This is an array of the misc pins
 								   ~ it contains the following pins in orderd
-								   ~ servo pin, trig pin, echo pin
+								   ~ servo pin, trig pin, echo pin, servo power pin
 
 		*/
 		{
@@ -57,6 +62,7 @@ class Robot
 			this->motorPins[3] = motors[3];
 			this->trig         = misc[1];
 			this->echo         = misc[2];
+			this->servoPin     = misc[3];
 			this->servo.attach(misc[0]); // attaches servo to servo pin
 
 			for(byte i = 0; i < 4; ++i)
@@ -66,53 +72,65 @@ class Robot
 			
 			// more pinmodes
 			pinMode(misc[0], OUTPUT);
-			pinMode(this->trig,  OUTPUT);
+			pinMode(this->trig, OUTPUT);
+			pinMode(this->servoPin, OUTPUT);
 			pinMode(this->echo,  INPUT);
+
+			digitalWrite(this->servoPin, LOW);
 			
 		}
 
-		void left(int t)
+		void stop()
+		{
+			digitalWrite(this->motorPins[0], LOW);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], LOW);
+		}
+
+		void left()
 		/*
 			Robot::left
 
 			This function turns left for T time
 
-			@param int t ~ The time that the operation will go for in milliseconds
+		*/
+		{
+			digitalWrite(this->motorPins[0], HIGH);
+			digitalWrite(this->motorPins[1], LOW);
+			digitalWrite(this->motorPins[2], LOW);
+			digitalWrite(this->motorPins[3], HIGH);
+		}
+
+		void right()
+		/*
+			Robot::right
+
+			This function turns right for T time
+
 		*/
 		{
 			digitalWrite(this->motorPins[0], LOW);
 			digitalWrite(this->motorPins[1], HIGH);
 			digitalWrite(this->motorPins[2], HIGH);
 			digitalWrite(this->motorPins[3], LOW);
-			delay(t);
-			digitalWrite(this->motorPins[0], LOW);
-			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], LOW);
 		}
 
-		void right(int t)
+		void back()
 		/*
-			Robot::right
+			Robot::back
 
-			This function turns right for T time
+			This function turns back for T time while sensing
 
-			@param int t ~ The time that the operation will go for in milliseconds
 		*/
 		{
-
-			digitalWrite(this->motorPins[0], HIGH);
-			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], HIGH);
-			delay(t);
 			digitalWrite(this->motorPins[0], LOW);
 			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], LOW);
+			digitalWrite(this->motorPins[2], HIGH);
+			digitalWrite(this->motorPins[3], HIGH);
 		}
 
-		void forward(int t)
+		void forward()
 		/*
 			Robot::forward
 
@@ -121,109 +139,89 @@ class Robot
 			@param int t ~ The time that the operation will go for in milliseconds
 		*/
 		{
+			int scan;
 			digitalWrite(this->motorPins[0], HIGH);
-			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], HIGH);
-			digitalWrite(this->motorPins[3], LOW);
-			unsigned long timer = millis();
-			while ((timer+t) > millis())
-			{
-				if(this->quickPulse(90) < 3)
-				{
-					Serial.println("Movement Obstructed");
-					break;
-				}
-			}
-			digitalWrite(this->motorPins[0], LOW);
-			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], LOW);
-		}
-
-		void back(int t)
-		/*
-			Robot::back
-
-			This function turns back for T time while sensing
-
-			@param int t  The time that the operation will go for in milliseconds
-		*/
-		{
-			digitalWrite(this->motorPins[0], LOW);
 			digitalWrite(this->motorPins[1], HIGH);
 			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], HIGH);
-			unsigned long timer = millis();
-			while ((timer+t) > millis())
+			digitalWrite(this->motorPins[3], LOW);
+			bluetooth.println("Enter anything to break");
+			// emptys bluetooth
+			while (bluetooth.available() > 0)
 			{
-				if(this->quickPulse(90) < 3){
-					Serial.println("Movement Obstructed");
+				bluetooth.read();
+			}
+			// resets servo
+			this->moveServo(90);
+			// scans for obsticles
+			while (true)
+			{
+				scan = this->quickPulse();
+				bluetooth.print("Scan distance: ");
+				bluetooth.println(scan);
+				if (scan < 3) // Breaks by distance
+				{
+					bluetooth.println("Movement Obstructed");
+					break;
+				}
+				if (bluetooth.available() > 0) // Breaks by input
+				{
+					bluetooth.println("Break Recieved");
 					break;
 				}
 			}
-			digitalWrite(this->motorPins[0], LOW);
-			digitalWrite(this->motorPins[1], LOW);
-			digitalWrite(this->motorPins[2], LOW);
-			digitalWrite(this->motorPins[3], LOW);
+			this->stop(); // Stops robot
 		}
 
-		unsigned int quickPulse(byte degree)
+		void moveServo(byte degree)
 		/*
-			Robot::quickPulse
 
-			takes a quick pulse at the selected angle and returns distance
+			Robot::moveServo
+
+			Moves servo to selected angle and checks for succsessful rotation
 
 			@param: byte degree ~ the degree the servo will go to
 
-			returns: unsinged int distance
 		*/
 		{
+			digitalWrite(this->servoPin, HIGH);
+			delay(10);
 			while (this->servo.read() != degree)
 			{
 				this->servo.write(degree);
 			}
+			digitalWrite(this->servoPin, LOW);
+		}
+
+		unsigned int quickPulse()
+		/*
+			Robot::quickPulse
+
+			takes a quick pulse and returns distance
+
+			returns: unsinged int distance
+		*/
+		{
 			digitalWrite(this->trig, LOW);
 			digitalWrite(this->trig, HIGH);
 			delay(1);
 			digitalWrite(this->trig, LOW);
 			int pulse = pulseIn(this->echo, HIGH);
+			digitalWrite(this->trig, LOW);
+			digitalWrite(this->trig, HIGH);
+			delay(1);
+			digitalWrite(this->trig, LOW);
+			int pulse2 = pulseIn(this->echo, HIGH);
 			pulse = pulse / 29 / 2;
-			this->distances[degree] = pulse;
+			pulse2 = pulse2 / 29 / 2;
+			if (abs(pulse - pulse2) >= 20)
+			{
+				unsigned int recursion = this->quickPulse();
+				return recursion;
+			}
+			// this->distances[this->servo.read()] = pulse;
 			return pulse;
 		}
 
-		unsigned int longPulse(byte degree)
-		/*
-			Robot::longPulse
-
-			takes 5 quick pulse at the selected angle and returns average distance
-			this method is more accutate and will remove issues with random interference
-
-			@param: byte degree ~ the degree the servo will go to
-
-			returns: unsinged int average distance
-		*/
-		{
-			int pulseAvg;
-			while (this->servo.read() != degree)
-			{
-				this->servo.write(degree);
-			}
-
-			for (byte i = 0; i < 3; ++i)
-			{
-				digitalWrite(this->trig, HIGH);
-				delay(1);
-				digitalWrite(this->trig, LOW);
-				int pulse = pulseIn(this->echo, HIGH);
-				pulse = pulse / 29 / 2;
-				pulseAvg += pulse;
-				pulse = 0;
-			}
-			pulseAvg = pulseAvg / 3;
-			this->distances[degree] = pulseAvg;
-			return pulseAvg;
-		}
 
 		unsigned int scanQuickPulse()
 		/*
@@ -238,65 +236,16 @@ class Robot
 		*/
 		{
 			unsigned int distance;
-			unsigned int distance2;
-			while (this->servo.read() != 0)
-			{
-				this->servo.write(0);
-			}
+			this->moveServo(0);
 			delay(1000);
 			for (byte i = 0; i < 179; ++i)
 			{
-				while (this->servo.read() != i)
-				{
-					this->servo.write(i);
-				}
-				distance = this->quickPulse(i);
-				delay(10);
-				distance2 = this->quickPulse(i);
-				if (abs(distance - distance2) > 20)
-				{
-					return this->scanQuickPulse();
-				}
-				else
-				{
-					this->distances[i] = (distance + distance2) / 2;
-					return (distance + distance2) / 2
-				}
+				this->moveServo(i);
+				distance = this->quickPulse();
+				this->distances[i] = distance;
 				// if (distance < 3){
 				// 	return i;
 				// }
-			}
-		}
-
-		unsigned int scanLongPulse()
-		/*
-			Robot::scanQuickPulse
-
-			This function scans the whole 180 degrees with the longPulse function
-			it then updates the distances variables
-
-			returns:
-			if a distance is lower the  cutoff then the degree is returned
-		*/
-		{
-			unsigned int distance;
-			while (this->servo.read() != 0)
-			{
-				this->servo.write(0);
-			}
-			delay(1000);
-			for (byte i = 0; i < 179; ++i)
-			{
-				while (this->servo.read() != i)
-				{
-					this->servo.write(i);
-				}
-				distance = this->longPulse(i);
-				this->distances[i] = distance;
-				if (distance < 3){
-					return i;
-				}
-				
 			}
 		}
 
@@ -310,9 +259,9 @@ class Robot
 		*/
 		{
 			int input;
+			bluetooth.println("Looking for input!");
 			while (true)
 			{
-				bluetooth.println("Looking for input!");
 				if (bluetooth.available() > 0)
 				{
 					input = bluetooth.read();
@@ -325,9 +274,11 @@ class Robot
 					input = Serial.read();
 					Serial.println("Input Recieved: ");
 					Serial.println(input);
+					input -= 48; // required for ascii to int conversion
+					bluetooth.println("Input processed: ");
+					bluetooth.println(input);
 					return input;
 				}
-				delay(100);
 			}
 		}
 
@@ -349,37 +300,45 @@ class Robot
 				-> 10 ~ pass
 		*/
 		{
-			int state = 10;
-			while (state != -1)
+			byte state = 9;
+			while (true)
 			{
 				state = this->checkBluetooth();
 				switch (state)
-					{
-						case 0:
-							this->forward(100);
-							state = 10;
-							break;
-						case 1:
-							this->back(100);
-							state = 10;
-							break;
-						case 2:
-							this->left(100);
-							state = 10;
-							break;
-						case 3:
-							this->right(100);
-							state = 10;
-							break;
-						case 4:
-							this->pathfinding();
-							state = -1;
-							break;
-
-						default:
-							break;
-					}
-
+				{
+					case 0:
+						bluetooth.println("Robot: Moving Forward");
+						this->moveServo(90);
+						this->forward();
+						break;
+					case 1:
+						bluetooth.println("Robot: Moving Back");
+						this->back();
+						break;
+					case 2:
+						bluetooth.println("Robot: Moving Left");
+						this->left();
+						break;
+					case 3:
+						bluetooth.println("Robot: Moving Right");
+						this->right();
+						break;
+					case 4:
+						bluetooth.println("Robot: Entering Pathfinding");
+						this->pathfinding();
+						break;
+					case 5:
+						bluetooth.println("Robot: Scanning");
+						this->stop();
+						this->scanQuickPulse();
+						this->printDistances();
+						this->moveServo(90);
+						break;
+					case 6:
+						bluetooth.println("Robot: Stopping");
+						this->moveServo(90);
+						this->stop();
+				}
 			}
 		}
 
@@ -391,6 +350,21 @@ class Robot
 		*/
 		{
 
+		}
+
+		void printDistances()
+		{
+			for (byte i = 0; i < 179; ++i)
+			{
+				bluetooth.print("Distance as degree: ");
+				Serial.print("Distance as degree: ");
+				bluetooth.print(i);
+				Serial.print(i);
+				bluetooth.print(" is ");
+				Serial.print(" is ");
+				bluetooth.println(this->distances[i]);
+				Serial.println(this->distances[i]);
+			}
 		}
 };
 
@@ -406,24 +380,10 @@ void setup()
 	bluetooth.println("Hi");
 	Serial.println("init testing");
 	mike.init(definedMotors, definedMisc);
-	// mike.remoteControl();
-	// mike.scanLongPulse();
+	mike.remoteControl();
 }
 
 void loop()
 {
-	// for (byte i = 0; i < 179; ++i)
-	// {
-	// 	bluetooth.print("Distance as degree: ");
-	// 	bluetooth.print(i);
-	// 	bluetooth.print(" is ");
-	// 	bluetooth.println(mike.distances[i]);
-	// }
-	bluetooth.println(mike.quickPulse(90));
-	delay(10);
-
-	// digitalWrite(mike.trig, HIGH);
-	// delay(1);
-	// digitalWrite(mike.trig, LOW);
-	// bluetooth.println(pulseIn(mike.echo, HIGH));
+	// mike.scanQuickPulse();
 }
