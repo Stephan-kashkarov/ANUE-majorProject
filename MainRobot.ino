@@ -12,7 +12,7 @@
 
 // Variable definition
 byte definedMotors[4] = {8, 9, 10, 11}; // motors 
-byte definedMisc[4] = {3, 4, 5, 2}; // servo, trig, echo, servo power
+byte definedMisc[3] = {3, 4, 5}; // servo, trig, echo
 SoftwareSerial bluetooth(12, 13); // bluetooth
 
 class Robot
@@ -39,7 +39,7 @@ class Robot
 		int distances [180];
 
 	public:
-		void init(byte motors[4], byte misc[4])
+		void init(byte motors[4], byte misc[3])
 		/*
 			Robot::init
 
@@ -49,9 +49,9 @@ class Robot
 								   ~ the pins should be orderd like should
 								   ~ motor 1 a, motor 1 b, motor 2 a, motor 2 b 
 
-			@param: byte misc[4]   ~ This is an array of the misc pins
+			@param: byte misc[3]   ~ This is an array of the misc pins
 								   ~ it contains the following pins in orderd
-								   ~ servo pin, trig pin, echo pin, servo power pin
+								   ~ servo pin, trig pin, echo pin
 
 		*/
 		{
@@ -60,9 +60,9 @@ class Robot
 			this->motorPins[1] = motors[1];
 			this->motorPins[2] = motors[2];
 			this->motorPins[3] = motors[3];
+			this->servoPin     = misc[0];
 			this->trig         = misc[1];
 			this->echo         = misc[2];
-			this->servoPin     = misc[3];
 			this->servo.attach(misc[0]); // attaches servo to servo pin
 
 			for(byte i = 0; i < 4; ++i)
@@ -72,11 +72,8 @@ class Robot
 			
 			// more pinmodes
 			pinMode(misc[0], OUTPUT);
-			pinMode(this->trig, OUTPUT);
-			pinMode(this->servoPin, OUTPUT);
+			pinMode(this->trig,  OUTPUT);
 			pinMode(this->echo,  INPUT);
-
-			digitalWrite(this->servoPin, LOW);
 			
 		}
 
@@ -150,15 +147,13 @@ class Robot
 			{
 				bluetooth.read();
 			}
-			// resets servo
-			this->moveServo(90);
 			// scans for obsticles
 			while (true)
 			{
 				scan = this->quickPulse();
 				bluetooth.print("Scan distance: ");
 				bluetooth.println(scan);
-				if (scan < 3) // Breaks by distance
+				if (scan < 10) // Breaks by distance
 				{
 					bluetooth.println("Movement Obstructed");
 					break;
@@ -169,6 +164,12 @@ class Robot
 					break;
 				}
 			}
+			// emptys bluetooth
+			while (bluetooth.available() > 0)
+			{
+				bluetooth.read();
+			}
+			this->servo.attach(this->servoPin);
 			this->stop(); // Stops robot
 		}
 
@@ -183,13 +184,10 @@ class Robot
 
 		*/
 		{
-			digitalWrite(this->servoPin, HIGH);
-			delay(10);
 			while (this->servo.read() != degree)
 			{
 				this->servo.write(degree);
 			}
-			digitalWrite(this->servoPin, LOW);
 		}
 
 		unsigned int quickPulse()
@@ -307,9 +305,10 @@ class Robot
 				switch (state)
 				{
 					case 0:
+						this->servo.detach();
 						bluetooth.println("Robot: Moving Forward");
-						this->moveServo(90);
 						this->forward();
+						this->moveServo(90);
 						break;
 					case 1:
 						bluetooth.println("Robot: Moving Back");
