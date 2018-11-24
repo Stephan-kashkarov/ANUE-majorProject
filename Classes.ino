@@ -17,7 +17,8 @@ void pause(int len)
 	pause 
 
 	This function is an alternative to the default delay function
-	as that it dosen't interfear with the servo library.
+	as that it dosen't interfear with the servo library or
+	other PWM signals.
 
 	@param int len ~ the lenght of the pause in milliseconds
 
@@ -263,38 +264,103 @@ void Sensor::fullSweep(long &distances)
 class Motors
 /*
 
+	Class Motors
+
+	This class controls the operations for all the motors
+	it controls all directional and pwm based movement.
 */
 {
 	private:
-		/*
+	  /*
+			Variables of Motors
 
+			the Variables of Motors include:
+				-> motorPin1A | The motor pin left top
+				-> motorPin1B | The motor pin left bottom
+				-> motorPin2A | The motor pin right top
+				-> motorPin2B | The motor pin right bottom
 		*/
-		byte motorPin1A;
-		byte motorPin1B;
-		byte motorPin2A;
-		byte motorPin2B;
+	  byte motorPin1A;
+	  byte motorPin1B;
+	  byte motorPin2A;
+	  byte motorPin2B;
 
 	public:
-		/*
+	  /*
+			Functions of Motors
 
+			the functions of motors include:
+				-> Motors(byte motorPins[4]) | Initaliser of Motors
+				-> int forward(byte precent) | Forward function moves forward and scans
+				-> void left(byte precent)   | Left function turns left on spot
+				-> void right(byte precent)  | Right function turns right on spot
+				-> void back(byte precent)   | Back function moves back
+				-> void stop()               | Stop function stops the motors
 		*/
-		Motors(byte motorPins[4]);
-		int forward(byte precent);
-		void left(byte precent);
-		void right(byte precent);
-		void back(byte precent);
-		void stop();
+	  Motors(byte motorPins[4]);
+	  int forward(byte precent);
+	  void left(byte precent);
+	  void right(byte precent);
+	  void back(byte precent);
+	  void stop();
 };
 
 // Functions of Motors
 Motors::Motors(byte motorPins[4])
-/**/
+/*
+	Motors::Motors
+
+	Initaliser of Motors
+
+	takes in an array of pins of length 4
+	these pins are then mapped to the 
+	local variables.
+*/
 {
+	// binds pins to locals
+	this->motorPin1A = motorPins[0];
+	this->motorPin1B = motorPins[1];
+	this->motorPin2A = motorPins[2];
+	this->motorPin2B = motorPins[3];
+
+	// sets pinmodes on all pins
+	for (size_t i = 0; i < 4; ++i)
+	{
+		pinMode(motorPins[i], OUTPUT);
+	}
 }
 
 int Motors::forward(byte precent)
-/**/
+/*
+	Motors::forward
+
+	forward function
+
+	runs the car forward whilst scanning for obsticles
+	this function can be run at a slower speed through pwm
+
+	@param (byte percent) ~ a value between 0 and 100 which
+	                      ~ translates into a pwm value.
+*/
 {
+	if (percent == 100) // if full front speed
+	{
+		digitalWrite(motorPin1A, HIGH);
+		digitalWrite(motorPin1B, LOW);
+		digitalWrite(motorPin2A, HIGH);
+		digitalWrite(motorPin2B, LOW);
+	}
+	else
+	{
+		// maps the percent to the PWM range
+		percent = map(percent, 0, 100, 0, 255);
+		// PWMs to the PWM pins and sets others low
+		analogWrite(motorPin1A, percent);
+		digitalWrite(motorPin1B, LOW);
+		analogWrite(motorPin2A, percent);
+		digitalWrite(motorPin2B, LOW);
+	}
+	// TODO: The scanning
 }
 
 void Motors::left(byte precent)
