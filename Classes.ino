@@ -183,7 +183,9 @@ long Sensor::checkSonarDumb()
 	// local variables
 	long avgDistance;
 
+	// takes avg distance
 	avgDistance = this->pulse();
+	// avgs it 3 more times
 	for (size_t i = 0; i < 3; ++i)
 	{
 		avgDistance += this->pulse();
@@ -222,7 +224,7 @@ void Sensor::forwardSweep(long &points)
 	checks 5 important points
 
 	This function goes over the five important points in
-	forwards navigation these include 0, 45, 90, 135, 180
+	forwards navigation these include 45, 67, 90, 113, 135
 	this then modifes the list given as input.
 
 	returns: long &points ~ modifies list given as input with
@@ -230,7 +232,7 @@ void Sensor::forwardSweep(long &points)
 */
 {
 	// local variables
-	byte angles[5] = {0, 45, 90, 135, 180};
+	byte angles[5] = {45, 67, 90, 113, 135};
 	
 	// iterates throgh angles
 	for (size_t i = 0, i < 5; ++i)
@@ -298,6 +300,7 @@ class Motors
 				-> void stop()               | Stop function stops the motors
 		*/
 	  Motors(byte motorPins[4]);
+	  void pinModeReset();
 	  int forward(byte precent);
 	  void left(byte precent);
 	  void right(byte precent);
@@ -330,14 +333,32 @@ Motors::Motors(byte motorPins[4])
 	}
 }
 
+void Motors::pinModeReset()
+/*
+	Motors::pinModeReset
+
+	resets the pinModes
+
+	This function resets the pinmodes of all motor pins.
+	It is used after a pin was used for pwm to ensure that
+	the pin can handle normal digital signals again
+*/
+{
+	// Sets pinmodes
+	pinMode(this->motorPin1A, OUTPUT);
+	pinMode(this->motorPin1B, OUTPUT);
+	pinMode(this->motorPin2A, OUTPUT);
+	pinMode(this->motorPin2B, OUTPUT);
+}
+
 int Motors::forward(byte precent)
 /*
 	Motors::forward
 
-	forward function
+	moves the robot forward
 
-	runs the car forward whilst scanning for obsticles
-	this function can be run at a slower speed through pwm
+	moves the robot forward at a percentage of full power
+	as specified by input. 
 
 	@param (byte percent) ~ a value between 0 and 100 which
 	                      ~ translates into a pwm value.
@@ -345,6 +366,7 @@ int Motors::forward(byte precent)
 {
 	if (percent == 100) // if full front speed
 	{
+		this->pinModeReset();
 		digitalWrite(motorPin1A, HIGH);
 		digitalWrite(motorPin1B, LOW);
 		digitalWrite(motorPin2A, HIGH);
@@ -360,32 +382,130 @@ int Motors::forward(byte precent)
 		analogWrite(motorPin2A, percent);
 		digitalWrite(motorPin2B, LOW);
 	}
-	// TODO: The scanning
 }
 
 void Motors::left(byte precent)
-/**/
+/*
+	Motors::left
+
+	Turns the robot left.
+
+	This function turns the robot left at specified
+	percentage of full speed.
+
+	@param (byte percent) ~ a value between 0 and 100 which
+	                      ~ translates into a pwm value.
+*/
 {
+	if (percent == 100) // if full front speed
+	{
+		this->pinModeReset();
+		digitalWrite(motorPin1A, LOW);
+		digitalWrite(motorPin1B, HIGH);
+		digitalWrite(motorPin2A, HIGH);
+		digitalWrite(motorPin2B, LOW);
+	}
+	else
+	{
+		// maps the percent to the PWM range
+		percent = map(percent, 0, 100, 0, 255);
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
+		// PWMs to the PWM pins and sets others low
+		analogWrite(motorPin1A, invPercent);
+		digitalWrite(motorPin1B, HIGH);
+		analogWrite(motorPin2A, percent);
+		digitalWrite(motorPin2B, LOW);
+	}
 }
 
 void Motors::right(byte precent)
-/**/
+/*
+	Motors::right
+
+	Turns the robot right.
+
+	This function turns the robot right at specified
+	percentage of full speed.
+
+	@param (byte percent) ~ a value between 0 and 100 which
+	                      ~ translates into a pwm value.
+*/
 {
+	if (percent == 100) // if full front speed
+	{
+		this->pinModeReset();
+		digitalWrite(motorPin1A, HIGH);
+		digitalWrite(motorPin1B, LOW);
+		digitalWrite(motorPin2A, LOW);
+		digitalWrite(motorPin2B, HIGH);
+	}
+	else
+	{
+		// maps the percent to the PWM range
+		percent = map(percent, 0, 100, 0, 255);
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
+		// PWMs to the PWM pins and sets others low
+		analogWrite(motorPin1A, percent);
+		digitalWrite(motorPin1B, LOW);
+		analogWrite(motorPin2A, invPercent);
+		digitalWrite(motorPin2B, HIGH);
+	}
 }
 
 void Motors::back(byte precent)
-/**/
+/*
+	Motors::back
+
+	Turns the robot back.
+
+	This function moves the robot back at specified
+	percentage of full speed.
+
+	@param (byte percent) ~ a value between 0 and 100 which
+	                      ~ translates into a pwm value.
+*/
 {
+	if (percent == 100) // if full front speed
+	{
+		this->pinModeReset();
+		digitalWrite(motorPin1A, LOW);
+		digitalWrite(motorPin1B, HIGH);
+		digitalWrite(motorPin2A, LOW);
+		digitalWrite(motorPin2B, HIGH);
+	}
+	else
+	{
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
+		// PWMs to the PWM pins and sets others low
+		analogWrite(motorPin1A, invPercent);
+		digitalWrite(motorPin1B, HIGH);
+		analogWrite(motorPin2A, invPercent);
+		digitalWrite(motorPin2B, HIGH);
+	}
 }
 
 void Motors::stop()
-/**/
+/*
+	Motors::stop
+
+	stops the robot
+
+	This function stops the robot from doing any movement
+*/
 {
+	this->pinModeReset();
+	digitalWrite(motorPin1A, LOW);
+	digitalWrite(motorPin1B, LOW);
+	digitalWrite(motorPin2A, LOW);
+	digitalWrite(motorPin2B, LOW);
 }
 
 class Robot
 /*
-
+	
 */
 {
 	private:
