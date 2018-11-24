@@ -8,7 +8,6 @@
 */
 // imports
 #include <Servo.h>
-#include <SoftwareSerial.h>
 
 // Functions
 
@@ -173,6 +172,11 @@ long Sensor::checkSonarDumb()
 	This function takes three measurments of the ultrasonic
 	at the current angle and returns the avg distance.
 
+	@param (byte degree) ~ a number between 0 and 179 that the servo will move to
+
+	returns: long distance ~ The distance that was
+	                       ~ measured with the ultrasonic in cms
+
 */
 {
 	// local variables
@@ -203,7 +207,6 @@ long Sensor::checkSonarSmart(byte degree)
 	                       ~ measured with the ultrasonic in cms
 */
 {
-
 	// moves servo to degree
 	this->moveServo(degree);
 	// returns the avg distance
@@ -212,13 +215,49 @@ long Sensor::checkSonarSmart(byte degree)
 
 
 void Sensor::forwardSweep(long &points)
-/**/
+/*
+	Sensor::forwardSweep
+
+	checks 5 important points
+
+	This function goes over the five important points in
+	forwards navigation these include 0, 45, 90, 135, 180
+	this then modifes the list given as input.
+
+	returns: long &points ~ modifies list given as input with
+	                      ~ distances in order.
+*/
 {
+	// local variables
+	byte angles[5] = {0, 45, 90, 135, 180};
+	
+	// iterates throgh angles
+	for (size_t i = 0, i < 5; ++i)
+	{
+		points[i] = this->checkSonarSmart(angles[i]);
+	}
 }
 
 void Sensor::fullSweep(long &distances)
-/**/
+/*
+	Sensor::fullSweep
+
+	does a full 180 degree sweep
+
+	This function goes through all 180 points
+	of rotation in the servo and modifies list
+	given as input with these values.
+
+	returns: long &distances ~ modifies list given as input with
+	                         ~ distances in order.
+*/
 {
+	// iterates throgh all angles
+	for (size_t i = 0, i < 179; ++i)
+	{
+		distances[i] = this->checkSonarSmart(angles[i]);
+		pause(1);
+	}
 }
 
 class Motors
