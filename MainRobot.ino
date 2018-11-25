@@ -90,8 +90,8 @@ class Sensor
 	long pulseUltra();
 	long checkSonarSmart(byte degree);
 	long checkSonarDumb();
-	void forwardSweep(long *points[5]);
-	void fullSweep(long *distances[180]);
+	void forwardSweep(long *points);
+	void fullSweep(long *distances);
 };
 
 // Functions of Sensor
@@ -221,7 +221,7 @@ long Sensor::checkSonarSmart(byte degree)
 	return checkSonarDumb();
 }
 
-void Sensor::forwardSweep(long *points[5])
+void Sensor::forwardSweep(long *points)
 /*
 	Sensor::forwardSweep
 
@@ -245,7 +245,7 @@ void Sensor::forwardSweep(long *points[5])
 	}
 }
 
-void Sensor::fullSweep(long *distances[180])
+void Sensor::fullSweep(long* distances)
 /*
 	Sensor::fullSweep
 
@@ -278,7 +278,7 @@ class Motors
 {
 	private:
 		/*
-			Variables of Motors
+			Variables of Mo	tors
 
 			the Variables of Motors include:
 				-> motorPin1A | The motor pin left top
@@ -524,47 +524,33 @@ class Robot
 			The variables of Robot include:
 				-> sensor         | This variable contains an instance of the servo class
 				-> motors         | This variable contains an instance of the motor class
+				-> bluetooth      | This variable contains an instance of the SoftwareSerial class
 				-> distances[180] | This is an array of 180 points around the robot
 				-> points[5]      | This variable contains 5 important points for quick scanning
 		*/
-		Motors* motors = NULL;
-		Sensor* sensor = NULL;
-		long distances[180];
-		long points[5];
+	  Motors *motors = NULL;
+	  Sensor *sensor = NULL;
+	  SoftwareSerial *bluetooth = NULL;
+	  long distances[180];
+	  long points[5];
 
 	public:
 		/*
 			Functions of Robot
 
 			The functions of Robot include:
-				-> Robot(motors, sensors, comPins[2]) | The initaliser of Robot
 				-> void init()                        | The pinmode setter for void setup
 				-> void bluetooth()                   | Bluetooth/Serial reading protocal
 				-> void pathfinding()                 | Pathfinding algorithm
 				-> void remote()                      | Bluetooth/Serial based remote control system
 		*/
-		Robot(byte* motors, byte* sensors, byte* comPins);
-		void init();
-		void bluetooth();
+		void init(byte *motorPins, byte *sensorPins, byte *comPins);
+		int readBluetooth();
 		void pathfinding();
 		void remote();
 };
 
-Robot::Robot(byte* motorPins, byte* sensorPins, byte* comPins)
-/*
-	Robot::Robot
-
-	The initaliser of Robot.
-
-	This function sets up all the required classes
-	for smooth operation
-*/
-{
-	motors = new Motors(motorPins);
-	sensor = new Sensor(sensorPins);
-}
-
-void Robot::init()
+void Robot::init(byte *motorPins, byte *sensorPins, byte *comPins)
 /*
 	Robot::init
 
@@ -575,9 +561,20 @@ void Robot::init()
 	classes within Robot
 */
 {
+	// initalises all internal classes
+	motors = new Motors(motorPins);
+	sensor = new Sensor(sensorPins);
+	bluetooth = new SoftwareSerial(comPins[0], comPins[1]);
+
+	// Starts up bluetooth
+	bluetooth->begin(9600);
+
+	// zeros ultrasonic
+	sensor->moveServo(90);
+	sensor->fullSweep(distances);
 }
 
-void Robot::bluetooth()
+int Robot::readBluetooth()
 /*
 	Robot::bluetooth
 
@@ -586,6 +583,18 @@ void Robot::bluetooth()
 	This function reads bluetooth and returns a response
 */
 {
+	int input;
+	while (true)
+	{
+		// if incomming data
+		if (bluetooth->available() > 0)
+		{
+			input = bluetooth->read();
+			bluetooth->println("Input Recieved: ");
+			bluetooth->println(input);
+			return input;
+		}
+	}
 }
 
 void Robot::pathfinding()
@@ -594,12 +603,134 @@ void Robot::pathfinding()
 }
 
 void Robot::remote()
-/**/
+/*
+	Robot::remoteControl
+
+	remote control method
+
+	this takes an input and excecutes then askes for a new input
+
+	Possible inputs:
+		-> 0  ~ move Forward
+		-> 1  ~ move Back
+		-> 2  ~ turn Left
+		-> 3  ~ turn Right
+		-> 4  ~ enter pathfinding mode
+		-> 5  ~ Scan 180 degrees
+		-> 6  ~ force stop
+*/
 {
+	// initalises state
+	byte state = 9;
+
+	// Starts control loop
+	while (true)
+	{
+		// get input
+		state = readBluetooth();
+		switch (state)
+		{
+			case 0:
+				// forward state
+				bluetooth->println("Robot: Moving Forward");
+				// sets motors to full forward
+				motors->forward(100);
+				// enters scanning loop
+				while(true)
+				{
+					// checks 5 points
+					sensor->forwardSweep(points);
+					// break cases
+					if (
+						// checks distances
+						points[0] < 3
+						|| points[4] < 3
+						|| points[1] < 4
+						|| points[3] < 4
+						|| points[2] < 5
+						// checks for bluetooth break
+						|| bluetooth->available() > 0
+						)
+					{
+						// kills forward
+						motors->stop();
+						break;
+					}
+				}
+				// resets state
+				state = 9;
+				break;
+			case 1:
+				// Back state
+				bluetooth->println("Robot: Moving Back");
+				// moves back at 50%
+				motors->back(50);
+				// resets state
+				state = 9;
+				break;
+			case 2:
+				// left state
+				bluetooth->println("Robot: Moving Left");
+				// moves left at 50%
+				motors->left(50);
+				// resets state
+				state = 9;
+				break;
+			case 3:
+				// Right state
+				bluetooth->println("Robot: Moving Right");
+				// moves right at 50%
+				motors->right(50);
+				// resets state
+				state = 9;
+				break;
+			case 4:
+				// pathfinding state
+				bluetooth->println("Robot: Entering Pathfinding");
+				pathfinding();
+				// resets state
+				state = 9;
+				break;
+			case 5:
+				// scanning state
+				bluetooth->println("Robot: Scanning");
+				// updates distances
+				sensor->fullSweep(distances);
+				pause(1);
+				// interates through distances
+				for(size_t i = 0; i < 179; ++i)
+				{
+					// format->prints the value
+					bluetooth->print("distance at ");
+					bluetooth->print(i);
+					bluetooth->print("degrees is ");
+					bluetooth->println(distances[i]);
+				}
+				// resets servo
+				sensor->moveServo(90);
+				// resets state
+				state = 9;
+				break;
+			case 6:
+				bluetooth->println("Robot: Stopping");
+				motors->stop();
+				sensor->moveServo(90);
+				// resets state
+				state = 9;
+				break;
+			
+			default:
+				// resets state
+				state = 9;
+				break;
+		}
+	}
 }
 
 // Creates instance of Robot named mike
 // Robot mike;
+
+// Sensor melvin();
 
 void setup()
 {
