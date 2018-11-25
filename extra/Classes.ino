@@ -8,12 +8,6 @@
 */
 // imports
 #include <Servo.h>
-#include <SoftwareSerial.h>
-
-// Variable definition
-byte definedMotors[4] = {8, 9, 10, 11}; // motors
-byte definedMisc[3] = {3, 4, 5};        // servo, trig, echo
-byte comPins[2] = {12, 13};             // bluetooth
 
 // Functions
 
@@ -31,9 +25,9 @@ void pause(int len)
 */
 {
 	unsigned long timer = millis();
-	while (timer + len >= millis())
+	while (millis() + len >= millis())
 	{
-		if (timer + len < millis())
+		if (millis() + len < millis())
 		{
 			break;
 		}
@@ -55,8 +49,8 @@ class Sensor
 	scanning.
 */
 {
-  private:
-	/*
+	private:
+		/*
 
 			The variables of Servo
 
@@ -66,32 +60,32 @@ class Sensor
 				-> trig  | The trig pin of the ultrasonic
 				-> echo  | The echo pin of the ultrasonic
 		*/
-	Servo servo;
-	byte trig;
-	byte echo;
+		Servo servo;
+		byte trig;
+		byte echo;
 
-  public:
-	/*
+	public:
+		/*
 			The functions of Servo
 			
 			The functions of Servo include:
-				-> Sensor(byte pins[3])                 | The initaliser of Servo
-				-> void moveServo(byte degree)          | Moves the servo to the specified degree
-				-> long checkSonarSmart(byte degree)    | Checks distance at degree
-				-> long checkSonarDumb()                | Checks current distance w/o servo
-				-> void forwardSweep(long *points[5])   | Does a quick 5 point sweep
-				-> void fullSweep(long *distances[180]) | Does a full 179 point sweep
+				-> Sensor(byte pins[3])              | The initaliser of Servo
+				-> void moveServo(byte degree)       | Moves the servo to the specified degree
+				-> long checkSonarSmart(byte degree) | Checks distance at degree
+				-> long checkSonarDumb()             | Checks current distance w/o servo
+				-> void forwardSweep(long &points)   | Does a quick 5 point sweep
+				-> void fullSweep(long &distances)   | Does a full 179 point sweep
 
 			all functions are defined below
 			the class definition
 		*/
-	Sensor(byte pins[3]);
-	void moveServo(byte degree);
-	long pulseUltra();
-	long checkSonarSmart(byte degree);
-	long checkSonarDumb();
-	void forwardSweep(long *points[5]);
-	void fullSweep(long *distances[180]);
+		Sensor(byte pins[3]);
+		void moveServo(byte degree);
+		long Sensor::pulse();
+		long checkSonarSmart(byte degree);
+		long checkSonarDumb();
+		void forwardSweep(long &points);
+		void fullSweep(long &distances);
 };
 
 // Functions of Sensor
@@ -113,8 +107,8 @@ Sensor::Sensor(byte pins[3])
 	this->echo = pins[2];
 
 	// pinmode declarations
-	pinMode(pins[1], OUTPUT);
-	pinMode(pins[2], INPUT);
+	pinMode(pin[1], OUTPUT);
+	pinMode(pin[2], INPUT);
 }
 
 void Sensor::moveServo(byte degree)
@@ -132,7 +126,7 @@ void Sensor::moveServo(byte degree)
 */
 {
 	// ensure movement untill completion
-	while (this->servo.read() != degree)
+	while(this->servo.read() != degree)
 	{
 		// tells servo to move to degree
 		this->servo.write(degree);
@@ -141,9 +135,9 @@ void Sensor::moveServo(byte degree)
 	pause(1);
 }
 
-long Sensor::pulseUltra()
+long Sensor::pulse()
 /*
-	Sensor::pulseUltra
+	Sensor::pulse
 
 	the simple ultrasonic operation
 
@@ -166,7 +160,8 @@ long Sensor::pulseUltra()
 	distance = pulseIn(this->echo, HIGH);
 
 	// does arethmetic for distance
-	return distance / 29 / 2;
+	return distance/29/2;
+	
 }
 
 long Sensor::checkSonarDumb()
@@ -189,12 +184,12 @@ long Sensor::checkSonarDumb()
 	long avgDistance;
 
 	// takes avg distance
-	avgDistance = this->pulseUltra();
+	avgDistance = this->pulse();
 	// avgs it 3 more times
 	for (size_t i = 0; i < 3; ++i)
 	{
-		avgDistance += this->pulseUltra();
-		avgDistance /= 2;
+		avgDistance += this->pulse();
+		avgDistance/2;
 	}
 	return avgDistance;
 }
@@ -221,7 +216,8 @@ long Sensor::checkSonarSmart(byte degree)
 	return this->checkSonarDumb();
 }
 
-void Sensor::forwardSweep(long *points[5])
+
+void Sensor::forwardSweep(long &points)
 /*
 	Sensor::forwardSweep
 
@@ -231,21 +227,21 @@ void Sensor::forwardSweep(long *points[5])
 	forwards navigation these include 45, 67, 90, 113, 135
 	this then modifes the list given as input.
 
-	returns: long *points ~ modifies list given as input with
+	returns: long &points ~ modifies list given as input with
 	                      ~ distances in order.
 */
 {
 	// local variables
 	byte angles[5] = {45, 67, 90, 113, 135};
-
+	
 	// iterates throgh angles
-	for (int i = 0; i < 5; ++i)
+	for (size_t i = 0, i < 5; ++i)
 	{
 		points[i] = this->checkSonarSmart(angles[i]);
 	}
 }
 
-void Sensor::fullSweep(long *distances[180])
+void Sensor::fullSweep(long &distances)
 /*
 	Sensor::fullSweep
 
@@ -255,14 +251,14 @@ void Sensor::fullSweep(long *distances[180])
 	of rotation in the servo and modifies list
 	given as input with these values.
 
-	returns: long *distances ~ modifies list given as input with
+	returns: long &distances ~ modifies list given as input with
 	                         ~ distances in order.
 */
 {
 	// iterates throgh all angles
-	for (int i = 0; i < 179; ++i)
+	for (size_t i = 0, i < 179; ++i)
 	{
-		distances[i] = this->checkSonarSmart(i);
+		distances[i] = this->checkSonarSmart(angles[i]);
 		pause(1);
 	}
 }
@@ -274,7 +270,7 @@ class Motors
 
 	This class controls the operations for all the motors
 	it controls all directional and pwm based movement.
-*/
+*/	  
 {
 	private:
 		/*
@@ -292,23 +288,23 @@ class Motors
 		byte motorPin2B;
 
 	public:
-	/*
+		/*
 			Functions of Motors
 
 			the functions of motors include:
 				-> Motors(byte motorPins[4]) | Initaliser of Motors
-				-> void forward(byte percent) | Forward function moves forward and scans
-				-> void left(byte percent)   | Left function turns left on spot
-				-> void right(byte percent)  | Right function turns right on spot
-				-> void back(byte percent)   | Back function moves back
+				-> int forward(byte precent) | Forward function moves forward and scans
+				-> void left(byte precent)   | Left function turns left on spot
+				-> void right(byte precent)  | Right function turns right on spot
+				-> void back(byte precent)   | Back function moves back
 				-> void stop()               | Stop function stops the motors
 		*/
 		Motors(byte motorPins[4]);
 		void pinModeReset();
-		void forward(byte percent);
-		void left(byte percent);
-		void right(byte percent);
-		void back(byte percent);
+		int forward(byte precent);
+		void left(byte precent);
+		void right(byte precent);
+		void back(byte precent);
 		void stop();
 };
 
@@ -355,7 +351,7 @@ void Motors::pinModeReset()
 	pinMode(this->motorPin2B, OUTPUT);
 }
 
-void Motors::forward(byte percent)
+int Motors::forward(byte precent)
 /*
 	Motors::forward
 
@@ -388,7 +384,7 @@ void Motors::forward(byte percent)
 	}
 }
 
-void Motors::left(byte percent)
+void Motors::left(byte precent)
 /*
 	Motors::left
 
@@ -412,9 +408,9 @@ void Motors::left(byte percent)
 	else
 	{
 		// maps the percent to the PWM range
-		byte percent = map(percent, 0, 100, 0, 255);
-		// maps the inverse percentage for ground based pwm
-		byte invPercent = map(percent, 0, 100, 255, 0);
+		percent = map(percent, 0, 100, 0, 255);
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
 		// PWMs to the PWM pins and sets others low
 		analogWrite(motorPin1A, invPercent);
 		digitalWrite(motorPin1B, HIGH);
@@ -423,7 +419,7 @@ void Motors::left(byte percent)
 	}
 }
 
-void Motors::right(byte percent)
+void Motors::right(byte precent)
 /*
 	Motors::right
 
@@ -447,9 +443,9 @@ void Motors::right(byte percent)
 	else
 	{
 		// maps the percent to the PWM range
-		byte percent = map(percent, 0, 100, 0, 255);
-		// maps the inverse percentage for ground based pwm
-		byte invPercent = map(percent, 0, 100, 255, 0);
+		percent = map(percent, 0, 100, 0, 255);
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
 		// PWMs to the PWM pins and sets others low
 		analogWrite(motorPin1A, percent);
 		digitalWrite(motorPin1B, LOW);
@@ -458,7 +454,7 @@ void Motors::right(byte percent)
 	}
 }
 
-void Motors::back(byte percent)
+void Motors::back(byte precent)
 /*
 	Motors::back
 
@@ -481,8 +477,8 @@ void Motors::back(byte percent)
 	}
 	else
 	{
-		// maps the inverse percentage for ground based pwm
-		byte invPercent = map(percent, 0, 100, 255, 0);
+		// maps the inverse precentage for ground based pwm
+		invPercent = map(percent, 0, 100, 255, 0);
 		// PWMs to the PWM pins and sets others low
 		analogWrite(motorPin1A, invPercent);
 		digitalWrite(motorPin1B, HIGH);
@@ -543,7 +539,7 @@ class Robot
 				-> void pathfinding()                 | Pathfinding algorithm
 				-> void remote()                      | Bluetooth/Serial based remote control system
 		*/
-		Robot(motors[4], sensors[2], comPins[2]);
+		Robot(motors, sensors, comPins[2]);
 		void init();
 		void bluetooth();
 		void pathfinding();
@@ -593,16 +589,5 @@ void Robot::pathfinding()
 
 void Robot::remote()
 /**/
-{
-}
-
-// Creates instance of Robot named mike
-// Robot mike;
-
-void setup()
-{
-}
-
-void loop()
 {
 }
