@@ -85,7 +85,7 @@ class Sensor
 			all functions are defined below
 			the class definition
 		*/
-	Sensor(byte pins[3]);
+	Sensor(byte* pins);
 	void moveServo(byte degree);
 	long pulseUltra();
 	long checkSonarSmart(byte degree);
@@ -95,7 +95,7 @@ class Sensor
 };
 
 // Functions of Sensor
-Sensor::Sensor(byte pins[3])
+Sensor::Sensor(byte* pins)
 /*
 	Sensor::Sensor
 
@@ -108,9 +108,9 @@ Sensor::Sensor(byte pins[3])
 */
 {
 	// class variable binding
-	this->servo.attach(pins[0]); // attaches servo to pin servo
-	this->trig = pins[1];
-	this->echo = pins[2];
+	servo.attach(pins[0]); // attaches servo to pin servo
+	trig = pins[1];
+	echo = pins[2];
 
 	// pinmode declarations
 	pinMode(pins[1], OUTPUT);
@@ -132,10 +132,10 @@ void Sensor::moveServo(byte degree)
 */
 {
 	// ensure movement untill completion
-	while (this->servo.read() != degree)
+	while (servo.read() != degree)
 	{
 		// tells servo to move to degree
-		this->servo.write(degree);
+		servo.write(degree);
 	}
 	// takes a quick break
 	pause(1);
@@ -155,15 +155,15 @@ long Sensor::pulseUltra()
 	long distance;
 
 	//resets the trig pin just incase
-	digitalWrite(this->trig, LOW);
+	digitalWrite(trig, LOW);
 	pause(1);
 	// prepairs trigger
-	digitalWrite(this->trig, HIGH);
+	digitalWrite(trig, HIGH);
 	pause(1);
 	// activates trigger
-	digitalWrite(this->trig, LOW);
+	digitalWrite(trig, LOW);
 	// reads length of pulse
-	distance = pulseIn(this->echo, HIGH);
+	distance = pulseIn(echo, HIGH);
 
 	// does arethmetic for distance
 	return distance / 29 / 2;
@@ -189,11 +189,11 @@ long Sensor::checkSonarDumb()
 	long avgDistance;
 
 	// takes avg distance
-	avgDistance = this->pulseUltra();
+	avgDistance = pulseUltra();
 	// avgs it 3 more times
 	for (size_t i = 0; i < 3; ++i)
 	{
-		avgDistance += this->pulseUltra();
+		avgDistance += pulseUltra();
 		avgDistance /= 2;
 	}
 	return avgDistance;
@@ -216,9 +216,9 @@ long Sensor::checkSonarSmart(byte degree)
 */
 {
 	// moves servo to degree
-	this->moveServo(degree);
+	moveServo(degree);
 	// returns the avg distance
-	return this->checkSonarDumb();
+	return checkSonarDumb();
 }
 
 void Sensor::forwardSweep(long *points[5])
@@ -241,7 +241,7 @@ void Sensor::forwardSweep(long *points[5])
 	// iterates throgh angles
 	for (int i = 0; i < 5; ++i)
 	{
-		points[i] = this->checkSonarSmart(angles[i]);
+		points[i] = checkSonarSmart(angles[i]);
 	}
 }
 
@@ -262,7 +262,7 @@ void Sensor::fullSweep(long *distances[180])
 	// iterates throgh all angles
 	for (int i = 0; i < 179; ++i)
 	{
-		distances[i] = this->checkSonarSmart(i);
+		distances[i] = checkSonarSmart(i);
 		pause(1);
 	}
 }
@@ -296,14 +296,14 @@ class Motors
 			Functions of Motors
 
 			the functions of motors include:
-				-> Motors(byte motorPins[4]) | Initaliser of Motors
+				-> Motors(byte* motorPins) | Initaliser of Motors
 				-> void forward(byte percent) | Forward function moves forward and scans
 				-> void left(byte percent)   | Left function turns left on spot
 				-> void right(byte percent)  | Right function turns right on spot
 				-> void back(byte percent)   | Back function moves back
 				-> void stop()               | Stop function stops the motors
 		*/
-		Motors(byte motorPins[4]);
+		Motors(byte* motorPins);
 		void pinModeReset();
 		void forward(byte percent);
 		void left(byte percent);
@@ -313,7 +313,7 @@ class Motors
 };
 
 // Functions of Motors
-Motors::Motors(byte motorPins[4])
+Motors::Motors(byte* motorPins)
 /*
 	Motors::Motors
 
@@ -325,10 +325,10 @@ Motors::Motors(byte motorPins[4])
 */
 {
 	// binds pins to locals
-	this->motorPin1A = motorPins[0];
-	this->motorPin1B = motorPins[1];
-	this->motorPin2A = motorPins[2];
-	this->motorPin2B = motorPins[3];
+	motorPin1A = motorPins[0];
+	motorPin1B = motorPins[1];
+	motorPin2A = motorPins[2];
+	motorPin2B = motorPins[3];
 
 	// sets pinmodes on all pins
 	for (size_t i = 0; i < 4; ++i)
@@ -349,10 +349,10 @@ void Motors::pinModeReset()
 */
 {
 	// Sets pinmodes
-	pinMode(this->motorPin1A, OUTPUT);
-	pinMode(this->motorPin1B, OUTPUT);
-	pinMode(this->motorPin2A, OUTPUT);
-	pinMode(this->motorPin2B, OUTPUT);
+	pinMode(motorPin1A, OUTPUT);
+	pinMode(motorPin1B, OUTPUT);
+	pinMode(motorPin2A, OUTPUT);
+	pinMode(motorPin2B, OUTPUT);
 }
 
 void Motors::forward(byte percent)
@@ -370,7 +370,7 @@ void Motors::forward(byte percent)
 {
 	if (percent == 100) // if full front speed
 	{
-		this->pinModeReset();
+		pinModeReset();
 		digitalWrite(motorPin1A, HIGH);
 		digitalWrite(motorPin1B, LOW);
 		digitalWrite(motorPin2A, HIGH);
@@ -403,7 +403,7 @@ void Motors::left(byte percent)
 {
 	if (percent == 100) // if full front speed
 	{
-		this->pinModeReset();
+		pinModeReset();
 		digitalWrite(motorPin1A, LOW);
 		digitalWrite(motorPin1B, HIGH);
 		digitalWrite(motorPin2A, HIGH);
@@ -438,7 +438,7 @@ void Motors::right(byte percent)
 {
 	if (percent == 100) // if full front speed
 	{
-		this->pinModeReset();
+		pinModeReset();
 		digitalWrite(motorPin1A, HIGH);
 		digitalWrite(motorPin1B, LOW);
 		digitalWrite(motorPin2A, LOW);
@@ -473,7 +473,7 @@ void Motors::back(byte percent)
 {
 	if (percent == 100) // if full front speed
 	{
-		this->pinModeReset();
+		pinModeReset();
 		digitalWrite(motorPin1A, LOW);
 		digitalWrite(motorPin1B, HIGH);
 		digitalWrite(motorPin2A, LOW);
@@ -500,7 +500,7 @@ void Motors::stop()
 	This function stops the robot from doing any movement
 */
 {
-	this->pinModeReset();
+	pinModeReset();
 	digitalWrite(motorPin1A, LOW);
 	digitalWrite(motorPin1B, LOW);
 	digitalWrite(motorPin2A, LOW);
@@ -527,8 +527,8 @@ class Robot
 				-> distances[180] | This is an array of 180 points around the robot
 				-> points[5]      | This variable contains 5 important points for quick scanning
 		*/
-		Motors motors;
-		Sensor sensor;
+		Motors* motors = NULL;
+		Sensor* sensor = NULL;
 		long distances[180];
 		long points[5];
 
@@ -543,14 +543,14 @@ class Robot
 				-> void pathfinding()                 | Pathfinding algorithm
 				-> void remote()                      | Bluetooth/Serial based remote control system
 		*/
-		Robot(motors[4], sensors[2], comPins[2]);
+		Robot(byte* motors, byte* sensors, byte* comPins);
 		void init();
 		void bluetooth();
 		void pathfinding();
 		void remote();
 };
 
-Robot::Robot(motorPins[4], sensorPins[2], comPins[2])
+Robot::Robot(byte* motorPins, byte* sensorPins, byte* comPins)
 /*
 	Robot::Robot
 
@@ -560,6 +560,8 @@ Robot::Robot(motorPins[4], sensorPins[2], comPins[2])
 	for smooth operation
 */
 {
+	motors = new Motors(motorPins);
+	sensor = new Sensor(sensorPins);
 }
 
 void Robot::init()
@@ -606,3 +608,4 @@ void setup()
 void loop()
 {
 }
+
