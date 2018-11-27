@@ -237,7 +237,7 @@ void Sensor::forwardSweep(int *points)
 	// iterates throgh angles
 	for (int i = 0; i < 5; ++i)
 	{
-		pause(150);
+		pause(100);
 		points[i] = checkSonarSmart(angles[i]);
 	}
 }
@@ -295,16 +295,16 @@ class Motors
 			the functions of motors include:
 				-> Motors(byte* motorPins) | Initaliser of Motors
 				-> void forward(byte percent) | Forward function moves forward and scans
-				-> void left(byte percent)   | Left function turns left on spot
-				-> void right(byte percent)  | Right function turns right on spot
+				-> void left()   | Left function turns left on spot
+				-> void right()  | Right function turns right on spot
 				-> void back(byte percent)   | Back function moves back
 				-> void stop()               | Stop function stops the motors
 		*/
 		Motors(byte* motorPins);
 		void pinModeReset();
 		void forward();
-		void left(byte percent);
-		void right(byte percent);
+		void left();
+		void right();
 		void back();
 		void stop();
 };
@@ -321,17 +321,18 @@ Motors::Motors(byte* motorPins)
 	local variables.
 */
 {
+	// sets pinmodes on all pins
+	for (size_t i = 0; i < 4; ++i)
+	{
+		pinMode(motorPins[i], OUTPUT);
+	}
+
 	// binds pins to locals
 	motorPin1A = motorPins[0];
 	motorPin1B = motorPins[1];
 	motorPin2A = motorPins[2];
 	motorPin2B = motorPins[3];
 
-	// sets pinmodes on all pins
-	for (size_t i = 0; i < 4; ++i)
-	{
-		pinMode(motorPins[i], OUTPUT);
-	}
 }
 
 void Motors::pinModeReset()
@@ -365,13 +366,14 @@ void Motors::forward()
 	                      ~ translates into a pwm value.
 */
 {
-	analogWrite(motorPin1A, (255 - 139));
+	pinModeReset();
+	analogWrite(motorPin1A, 255 - 140);
 	digitalWrite(motorPin1B, LOW);
-	analogWrite(motorPin2A, 255);
+	digitalWrite(motorPin2A, HIGH);
 	digitalWrite(motorPin2B, LOW);
 }
 
-void Motors::left(byte percent)
+void Motors::left()
 /*
 	Motors::left
 
@@ -384,18 +386,15 @@ void Motors::left(byte percent)
 	                      ~ translates into a pwm value.
 */
 {
-	// maps the percent to the PWM range
-	byte newPercent = map(percent, 0, 100, 0, 255);
-	// maps the inverse percentage for ground based pwm
-	byte invPercent = map(percent, 0, 100, 255, 0);
 	// PWMs to the PWM pins and sets others low
-	analogWrite(motorPin1A, invPercent);
+	pinModeReset();
+	digitalWrite(motorPin1A, LOW);
 	digitalWrite(motorPin1B, HIGH);
-	analogWrite(motorPin2A, newPercent);
+	digitalWrite(motorPin2A, HIGH);
 	digitalWrite(motorPin2B, LOW);
 }
 
-void Motors::right(byte percent)
+void Motors::right()
 /*
 	Motors::right
 
@@ -408,14 +407,10 @@ void Motors::right(byte percent)
 	                      ~ translates into a pwm value.
 */
 {
-	// maps the percent to the PWM range
-	byte newPercent = map(percent, 0, 100, 0, 255);
-	// maps the inverse percentage for ground based pwm
-	byte invPercent = map(percent, 0, 100, 255, 0);
-	// PWMs to the PWM pins and sets others low
-	analogWrite(motorPin1A, newPercent);
+	pinModeReset();
+	digitalWrite(motorPin1A, HIGH);
 	digitalWrite(motorPin1B, LOW);
-	analogWrite(motorPin2A, invPercent);
+	digitalWrite(motorPin2A, LOW);
 	digitalWrite(motorPin2B, HIGH);
 }
 
@@ -432,7 +427,8 @@ void Motors::back()
 	                      ~ translates into a pwm value.
 */
 {
-	analogWrite(motorPin1A, ((255 / 2) + 32));
+	pinModeReset();
+	analogWrite(motorPin1A, (255 / 2) - 50);
 	digitalWrite(motorPin1B, HIGH);
 	analogWrite(motorPin2A, 255 / 2);
 	digitalWrite(motorPin2B, HIGH);
@@ -475,8 +471,8 @@ class Robot
 				-> distances[180] | This is an array of 180 points around the robot
 				-> points[5]      | This variable contains 5 important points for quick scanning
 		*/
-	  Motors *motors = NULL;
-	  Sensor *sensor = NULL;
+	  Motors* motors = NULL;
+	  Sensor* sensor = NULL;
 	  SoftwareSerial *bluetooth = NULL;
 	  int distances[180];
 	  int points[5];
@@ -518,7 +514,6 @@ void Robot::init(byte *motorPins, byte *sensorPins, byte *comPins)
 
 	// zeros ultrasonic
 	sensor->moveServo(90);
-	sensor->fullSweep(distances);
 }
 
 int Robot::readBluetooth()
@@ -531,6 +526,7 @@ int Robot::readBluetooth()
 */
 {
 	int input;
+	bluetooth->println("Waiting for Input!");
 	while (true)
 	{
 		// if incomming data
@@ -539,6 +535,10 @@ int Robot::readBluetooth()
 			input = bluetooth->read();
 			bluetooth->println("Input Recieved: ");
 			bluetooth->println(input);
+			while(bluetooth->available() >0)
+			{
+				bluetooth->read();
+			}
 			return input;
 		}
 	}
@@ -590,15 +590,17 @@ void Robot::remote()
 					// break cases
 					if (
 						// checks distances
-						points[0] < 3
-						|| points[4] < 3
-						|| points[1] < 4
-						|| points[3] < 4
-						|| points[2] < 5
+						points[0] < 5
+						|| points[4] < 5
+						|| points[1] < 7
+						|| points[3] < 7
+						|| points[2] < 10
 						// checks for bluetooth break
 						|| bluetooth->available() > 0
 						)
 					{
+						bluetooth->println("Exiting forward mode");
+						bluetooth->println(bluetooth->read());
 						// kills forward
 						motors->stop();
 						break;
@@ -619,7 +621,7 @@ void Robot::remote()
 				// left state
 				bluetooth->println("Robot: Moving Left");
 				// moves left at 50%
-				motors->left(50);
+				motors->left();
 				// resets state
 				state = 9;
 				break;
@@ -627,7 +629,7 @@ void Robot::remote()
 				// Right state
 				bluetooth->println("Robot: Moving Right");
 				// moves right at 50%
-				motors->right(50);
+				motors->right();
 				// resets state
 				state = 9;
 				break;
@@ -650,7 +652,7 @@ void Robot::remote()
 					// format->prints the value
 					bluetooth->print("distance at ");
 					bluetooth->print(i);
-					bluetooth->print("degrees is ");
+					bluetooth->print(" degrees is ");
 					bluetooth->println(distances[i]);
 				}
 				// resets servo
@@ -675,15 +677,16 @@ void Robot::remote()
 }
 
 // Variable definition
-byte definedMotors[4] = {9, 8, 10, 11}; // motors
-byte definedMisc[3] = {3, 4, 5};        // servo, trig, echo
-byte comPins[2] = {12, 13};             // bluetooth
+byte definedMotors[4] = {5, 8, 6, 11}; // motors
+byte definedMisc[3] = {2, 3, 4};       // servo, trig, echo
+byte comPins[2] = {13, 12};            // bluetooth
 
 // Creates instance of Robot named mike
 // Robot mike;
 
-Sensor* melvin = NULL;
-Motors* greg = NULL;
+// Sensor* melvin = NULL;
+// Motors* greg = NULL;
+Robot paul;
 
 // Sensor(byte *pins);
 	// void moveServo(byte degree);
@@ -696,47 +699,21 @@ Motors* greg = NULL;
 // Motors(byte *motorPins);
 	// void pinModeReset();
 	// void forward(byte percent);
-	// void left(byte percent);
-	// void right(byte percent);
+	// void left();
+	// void right();
 	// void back(byte percent);
 	// void stop();
 
 void setup()
 {
+	paul.init(definedMotors, definedMisc, comPins);
 	// melvin = new Sensor(definedMisc);
-	greg = new Motors(definedMotors);
+	// greg = new Motors(definedMotors);
 	// Serial.begin(9600);
 }
 
 void loop()
 {
-	greg->forward();
-	// pause(1000);
-	// greg->left(50);
-	// pause(1000);
-	// greg->right(100);
-	// pause(1000);
-	// greg->back();
-	// pause(100);
-	// greg->stop();
-	// pause(2000);
-	// analogWrite(definedMotors[0], 100);
-	// digitalWrite(definedMotors[1], LOW);
-	// analogWrite(definedMotors[2], 255);
-	// digitalWrite(definedMotors[3], LOW);
-	// pause(10000);
-	// digitalWrite(9, HIGH);
-	// pause(1000);
-	// digitalWrite(definedMotors[1], LOW);
-	// digitalWrite(definedMotors[2], LOW);
-	// digitalWrite(definedMotors[3], LOW);
-	// pause(1000);
-	// for (size_t i = 0; i < 3; ++i)
-	// {
-	// 	digitalWrite(LED_BUILTIN, HIGH);
-	// 	pause(1000);
-	// 	digitalWrite(LED_BUILTIN, LOW);
-	// 	pause(1000);
-	// }
+	paul.remote();
 }
 
