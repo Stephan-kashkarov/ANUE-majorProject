@@ -36,6 +36,19 @@ void pause(int len)
 	}
 }
 
+byte arrMinIndex(byte* arr, byte size)
+{
+	byte minimum = 0;
+	for (size_t i = 0; i < size; ++i)
+	{
+		if (arr[i] < arr[minimum] && arr[i] > 3)
+		{
+			minimum = i;
+		}
+	}
+	return i;
+}
+
 // Classes
 
 class Sensor
@@ -87,7 +100,7 @@ class Sensor
 	int checkSonarSmart(byte degree);
 	int checkSonarDumb();
 	void forwardSweep(int *points);
-	void fullSweep(int *distances);
+	void fullSweep(int *distances, byte start, byte finish);
 };
 
 // Functions of Sensor
@@ -235,14 +248,14 @@ void Sensor::forwardSweep(int *points)
 	byte angles[5] = {45, 67, 90, 113, 135};
 
 	// iterates throgh angles
-	for (int i = 0; i < 5; ++i)
+	for (size_t i = 0; i < 5; ++i)
 	{
 		pause(100);
 		points[i] = checkSonarSmart(angles[i]);
 	}
 }
 
-void Sensor::fullSweep(int* distances)
+void Sensor::fullSweep(int* distances, byte start, byte finish)
 /*
 	Sensor::fullSweep
 
@@ -257,7 +270,7 @@ void Sensor::fullSweep(int* distances)
 */
 {
 	// iterates throgh all angles
-	for (int i = 0; i < 179; ++i)
+	for (size_t i = start; i < finish; ++i)
 	{
 		distances[i] = checkSonarSmart(i);
 		pause(10);
@@ -428,7 +441,7 @@ void Motors::back()
 */
 {
 	pinModeReset();
-	analogWrite(motorPin1A, (255 / 2) - 50);
+	analogWrite(motorPin1A, (255 / 2) - 75);
 	digitalWrite(motorPin1B, HIGH);
 	analogWrite(motorPin2A, 255 / 2);
 	digitalWrite(motorPin2B, HIGH);
@@ -547,6 +560,59 @@ int Robot::readBluetooth()
 void Robot::pathfinding()
 /**/
 {
+	byte minDegree;
+	bool left;
+	while(true)
+	{
+		sensor->fullSweep(distances, 0, 180);
+		sensor->moveServo(90);
+		if (distances[90] > 7)
+		{
+			motors->forward();
+			while (true)
+			{
+				if (sensor->checkSonarSmart(90) < 7)
+				{
+					break;
+				}
+				else if (sensor->checkSonarSmart(10) < 7)
+				{
+					motors->left();
+					pause(100);
+					motors->stop();
+				}
+				else if (sensor->checkSonarSmart(170) < 7)
+				{
+					motors->right();
+					pause(100);
+					motors->stop();
+				}
+			}
+			motors->stop();
+		}
+		else
+		{
+			left = false
+			minDegree = getMinIndex(distances, 180);
+			if (distances[170] > distances[10])
+			{
+				left = true;
+			}
+			while (minDegree > 10 || minDegree < 170)
+			{
+				if (left)
+				{
+					motors->left();
+				}
+				else
+				{
+					motors->right();
+				}
+				sensor->fullSweep(points, minDegree - 2, minDegree + 2)
+				minDegree = getMinIndex(points, 180);
+			}
+		}
+	}
 }
 
 void Robot::remote()
@@ -580,24 +646,20 @@ void Robot::remote()
 			case 0:
 				// forward state
 				bluetooth->println("Robot: Moving Forward");
+				// Checks surroundings before starting
+				sensor->forwardSweep(points);
+				if (points[0] < 4 || points[4] < 4 || points[1] < 4 || points[3] < 4 || points[2] < 5)
+				{
+					break;
+				}
 				// sets motors to full forward
 				motors->forward();
-				// enters scanning loop
 				while(true)
 				{
 					// checks 5 points
 					sensor->forwardSweep(points);
 					// break cases
-					if (
-						// checks distances
-						points[0] < 5
-						|| points[4] < 5
-						|| points[1] < 7
-						|| points[3] < 7
-						|| points[2] < 10
-						// checks for bluetooth break
-						|| bluetooth->available() > 0
-						)
+					if (points[0] < 5 || points[4] < 5 || points[1] < 7 || points[3] < 7 || points[2] < 10 || bluetooth->available() > 0)
 					{
 						bluetooth->println("Exiting forward mode");
 						bluetooth->println(bluetooth->read());
@@ -644,7 +706,7 @@ void Robot::remote()
 				// scanning state
 				bluetooth->println("Robot: Scanning");
 				// updates distances
-				sensor->fullSweep(distances);
+				sensor->fullSweep(distances, 0, 180);
 				pause(1);
 				// interates through distances
 				for(size_t i = 0; i < 179; ++i)
