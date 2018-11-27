@@ -36,7 +36,7 @@ void pause(int len)
 	}
 }
 
-byte arrMinIndex(byte* arr, byte size)
+byte arrMinIndex(int *arr, byte size)
 {
 	byte minimum = 0;
 	for (size_t i = 0; i < size; ++i)
@@ -46,7 +46,20 @@ byte arrMinIndex(byte* arr, byte size)
 			minimum = i;
 		}
 	}
-	return i;
+	return minimum;
+}
+
+byte limitedArrMinIndex(int* arr, byte start, byte finish)
+{
+	byte minimum = start;
+	for (size_t i = start; i < finish; ++i)
+	{
+		if (arr[i] < arr[minimum] && arr[i] > 3)
+		{
+			minimum = i;
+		}
+	}
+	return minimum;
 }
 
 // Classes
@@ -195,6 +208,7 @@ int Sensor::checkSonarDumb()
 */
 {
 	// local variables
+	pause(100);
 	int avgDistance;
 
 	// takes avg distance
@@ -225,7 +239,9 @@ int Sensor::checkSonarSmart(byte degree)
 */
 {
 	// moves servo to degree
+	pause(10);
 	moveServo(degree);
+	pause(100);
 	// returns the avg distance
 	return checkSonarDumb();
 }
@@ -273,7 +289,7 @@ void Sensor::fullSweep(int* distances, byte start, byte finish)
 	for (size_t i = start; i < finish; ++i)
 	{
 		distances[i] = checkSonarSmart(i);
-		pause(10);
+		pause(5);
 	}
 }
 
@@ -560,29 +576,35 @@ int Robot::readBluetooth()
 void Robot::pathfinding()
 /**/
 {
+	byte maxSize = 180;
 	byte minDegree;
 	bool left;
 	while(true)
 	{
+		bluetooth->println("Starting pathfinding");
 		sensor->fullSweep(distances, 0, 180);
 		sensor->moveServo(90);
 		if (distances[90] > 7)
 		{
+			bluetooth->println("Forward clear");
 			motors->forward();
 			while (true)
 			{
 				if (sensor->checkSonarSmart(90) < 7)
 				{
+					bluetooth->println("Obsticle forward");
 					break;
 				}
 				else if (sensor->checkSonarSmart(10) < 7)
 				{
+					bluetooth->println("Obsticle right");
 					motors->left();
 					pause(100);
 					motors->stop();
 				}
 				else if (sensor->checkSonarSmart(170) < 7)
 				{
+					bluetooth->println("Obsticle left");
 					motors->right();
 					pause(100);
 					motors->stop();
@@ -592,14 +614,24 @@ void Robot::pathfinding()
 		}
 		else
 		{
-			left = false
-			minDegree = getMinIndex(distances, 180);
+			bluetooth->println("Forward blocked");
+			left = false;
+
+			minDegree = arrMinIndex(distances, maxSize);
 			if (distances[170] > distances[10])
 			{
+				bluetooth->println("Turning left");
 				left = true;
+			}
+			else
+			{
+				bluetooth->println("Turning right");
+				left = false;
 			}
 			while (minDegree > 10 || minDegree < 170)
 			{
+				bluetooth->print("Current min degree is ");
+				bluetooth->println(minDegree);
 				if (left)
 				{
 					motors->left();
@@ -608,9 +640,11 @@ void Robot::pathfinding()
 				{
 					motors->right();
 				}
-				sensor->fullSweep(points, minDegree - 2, minDegree + 2)
-				minDegree = getMinIndex(points, 180);
+				sensor->fullSweep(distances, minDegree - 2, minDegree + 2);
+				minDegree = limitedArrMinIndex(distances, minDegree - 2, minDegree + 2);
 			}
+			bluetooth->println("Obsticle avoided");
+			motors->stop();
 		}
 	}
 }
