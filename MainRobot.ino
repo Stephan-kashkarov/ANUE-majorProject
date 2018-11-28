@@ -36,32 +36,6 @@ void pause(int len)
 	}
 }
 
-byte arrMinIndex(int *arr, byte size)
-{
-	byte minimum = 0;
-	for (size_t i = 0; i < size; ++i)
-	{
-		if (arr[i] < arr[minimum] && arr[i] > 3)
-		{
-			minimum = i;
-		}
-	}
-	return minimum;
-}
-
-byte limitedArrMinIndex(int* arr, byte start, byte finish)
-{
-	byte minimum = start;
-	for (size_t i = start; i < finish; ++i)
-	{
-		if (arr[i] < arr[minimum] && arr[i] > 3)
-		{
-			minimum = i;
-		}
-	}
-	return minimum;
-}
-
 // Classes
 
 class Sensor
@@ -266,7 +240,7 @@ void Sensor::forwardSweep(int *points)
 	// iterates throgh angles
 	for (size_t i = 0; i < 5; ++i)
 	{
-		pause(100);
+		pause(50);
 		points[i] = checkSonarSmart(angles[i]);
 	}
 }
@@ -396,9 +370,9 @@ void Motors::forward()
 */
 {
 	pinModeReset();
-	analogWrite(motorPin1A, 255 - 140);
+	analogWrite(motorPin1A, 255);
 	digitalWrite(motorPin1B, LOW);
-	digitalWrite(motorPin2A, HIGH);
+	analogWrite(motorPin2A, 255 - 100);
 	digitalWrite(motorPin2B, LOW);
 }
 
@@ -457,7 +431,7 @@ void Motors::back()
 */
 {
 	pinModeReset();
-	analogWrite(motorPin1A, (255 / 2) - 75);
+	analogWrite(motorPin1A, 255 / 2);
 	digitalWrite(motorPin1B, HIGH);
 	analogWrite(motorPin2A, 255 / 2);
 	digitalWrite(motorPin2B, HIGH);
@@ -578,6 +552,9 @@ int Robot::pathfinding()
 {
 	byte maxSize = 180;
 	byte minDegree;
+	int check;
+	int point1;
+	int point2;
 	bool left;
 	while (true)
 	{
@@ -585,45 +562,66 @@ int Robot::pathfinding()
 		while(true)
 		{
 			motors->forward();
-			// checks 5 points
-			sensor->forwardSweep(points);
-			// break cases
-			if (points[2] < 10)
+			pause(50);
+			check = sensor->checkSonarSmart(10);
+			if (check < 9)
+			{
+				motors->stop();
+				motors->left();
+				pause(300);
+				motors->stop();
+				continue;
+			}
+			pause(50);
+			check = sensor->checkSonarSmart(90);
+			if (check < 15)
 			{
 				motors->stop();
 				break;
 			}
-			else if (points[0] < 5 || points[1] < 7)
+			pause(50);
+			check = sensor->checkSonarSmart(170);
+			if (check < 9)
 			{
-				bluetooth->println("obsticle right");
-				// kills forward
-				motors->stop();
-				motors->left();
-				pause(100);
-				while (sensor->checkSonarSmart(45) < 7)
-				{
-					motors->left();
-				}
-			}
-			else if (points[5] < 5 || points[4] < 7)
-			{
-				bluetooth->println("obsticle right");
-				// kills forward
 				motors->stop();
 				motors->right();
-				pause(100);
-				while (sensor->checkSonarSmart(135) < 7)
-				{
-					motors->right();
-				}
+				pause(300);
+				motors->stop();
+				continue;
 			}
-			else if (bluetooth->available() > 0)
+			pause(50);
+			check = sensor->checkSonarSmart(90);
+			if (check < 15)
+			{
+				motors->stop();
+				break;
+			}
+			if (bluetooth->available() > 0)
 			{
 				return 0;
 			}
 		}
 		while (true)
 		{
+			point1 = sensor->checkSonarSmart(10);
+			point2 = sensor->checkSonarSmart(170);
+			if (point1 > point2)
+			{
+				motors->right();
+			}
+			else if (point1 <= point2)
+			{
+				motors->left();
+			}
+			sensor->moveServo(90);
+			while (sensor->checkSonarDumb() < 30)
+			{
+				pause(100);
+			}
+			if (sensor->checkSonarSmart(90) > 30)
+			{
+				break;
+			}
 		}
 	}
 }
@@ -657,6 +655,7 @@ void Robot::remote()
 		switch (state)
 		{
 			case 0:
+				motors->stop();
 				// forward state
 				bluetooth->println("Robot: Moving Forward");
 				// Checks surroundings before starting
@@ -685,6 +684,7 @@ void Robot::remote()
 				state = 9;
 				break;
 			case 1:
+				motors->stop();
 				// Back state
 				bluetooth->println("Robot: Moving Back");
 				// moves back at 50%
@@ -693,6 +693,7 @@ void Robot::remote()
 				state = 9;
 				break;
 			case 2:
+				motors->stop();
 				// left state
 				bluetooth->println("Robot: Moving Left");
 				// moves left at 50%
@@ -701,6 +702,7 @@ void Robot::remote()
 				state = 9;
 				break;
 			case 3:
+				motors->stop();
 				// Right state
 				bluetooth->println("Robot: Moving Right");
 				// moves right at 50%
@@ -709,6 +711,7 @@ void Robot::remote()
 				state = 9;
 				break;
 			case 4:
+				motors->stop();
 				// pathfinding state
 				bluetooth->println("Robot: Entering Pathfinding");
 				pathfinding();
@@ -716,6 +719,7 @@ void Robot::remote()
 				state = 9;
 				break;
 			case 5:
+				motors->stop();
 				// scanning state
 				bluetooth->println("Robot: Scanning");
 				// updates distances
