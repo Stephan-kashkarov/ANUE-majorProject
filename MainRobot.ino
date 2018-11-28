@@ -10,7 +10,6 @@
 #include <Servo.h>
 #include <SoftwareSerial.h>
 
-
 // Functions
 
 void pause(int len)
@@ -81,7 +80,7 @@ class Sensor
 			all functions are defined below
 			the class definition
 		*/
-	Sensor(byte* pins);
+	Sensor(byte *pins);
 	void moveServo(byte degree);
 	int pulseUltra();
 	int checkSonarSmart(byte degree);
@@ -91,7 +90,7 @@ class Sensor
 };
 
 // Functions of Sensor
-Sensor::Sensor(byte* pins)
+Sensor::Sensor(byte *pins)
 /*
 	Sensor::Sensor
 
@@ -245,7 +244,7 @@ void Sensor::forwardSweep(int *points)
 	}
 }
 
-void Sensor::fullSweep(int* distances, byte start, byte finish)
+void Sensor::fullSweep(int *distances, byte start, byte finish)
 /*
 	Sensor::fullSweep
 
@@ -276,8 +275,8 @@ class Motors
 	it controls all directional and pwm based movement.
 */
 {
-	private:
-		/*
+  private:
+	/*
 			Variables of Motors
 
 			the Variables of Motors include:
@@ -286,12 +285,12 @@ class Motors
 				-> motorPin2A | The motor pin right top
 				-> motorPin2B | The motor pin right bottom
 		*/
-		byte motorPin1A;
-		byte motorPin1B;
-		byte motorPin2A;
-		byte motorPin2B;
+	byte motorPin1A;
+	byte motorPin1B;
+	byte motorPin2A;
+	byte motorPin2B;
 
-	public:
+  public:
 	/*
 			Functions of Motors
 
@@ -303,17 +302,17 @@ class Motors
 				-> void back(byte percent)   | Back function moves back
 				-> void stop()               | Stop function stops the motors
 		*/
-		Motors(byte* motorPins);
-		void pinModeReset();
-		void forward();
-		void left();
-		void right();
-		void back();
-		void stop();
+	Motors(byte *motorPins);
+	void pinModeReset();
+	void forward();
+	void left();
+	void right();
+	void back();
+	void stop();
 };
 
 // Functions of Motors
-Motors::Motors(byte* motorPins)
+Motors::Motors(byte *motorPins)
 /*
 	Motors::Motors
 
@@ -335,7 +334,6 @@ Motors::Motors(byte* motorPins)
 	motorPin1B = motorPins[1];
 	motorPin2A = motorPins[2];
 	motorPin2B = motorPins[3];
-
 }
 
 void Motors::pinModeReset()
@@ -463,8 +461,8 @@ class Robot
 	layer.
 */
 {
-	private:
-		/*
+  private:
+	/*
 			Variables of Robot
 
 			The variables of Robot include:
@@ -474,14 +472,14 @@ class Robot
 				-> distances[180] | This is an array of 180 points around the robot
 				-> points[5]      | This variable contains 5 important points for quick scanning
 		*/
-	  Motors* motors = NULL;
-	  Sensor* sensor = NULL;
-	  SoftwareSerial *bluetooth = NULL;
-	  int distances[180];
-	  int points[5];
+	Motors *motors = NULL;
+	Sensor *sensor = NULL;
+	SoftwareSerial *bluetooth = NULL;
+	int distances[180];
+	int points[5];
 
-	public:
-		/*
+  public:
+	/*
 			Functions of Robot
 
 			The functions of Robot include:
@@ -490,10 +488,10 @@ class Robot
 				-> void pathfinding()                 | Pathfinding algorithm
 				-> void remote()                      | Bluetooth/Serial based remote control system
 		*/
-		void init(byte *motorPins, byte *sensorPins, byte *comPins);
-		int readBluetooth();
-		int pathfinding();
-		void remote();
+	void init(byte *motorPins, byte *sensorPins, byte *comPins);
+	int readBluetooth();
+	int pathfinding();
+	void remote();
 };
 
 void Robot::init(byte *motorPins, byte *sensorPins, byte *comPins)
@@ -538,7 +536,7 @@ int Robot::readBluetooth()
 			input = bluetooth->read();
 			bluetooth->println("Input Recieved: ");
 			bluetooth->println(input);
-			while(bluetooth->available() >0)
+			while (bluetooth->available() > 0)
 			{
 				bluetooth->read();
 			}
@@ -559,7 +557,7 @@ int Robot::pathfinding()
 	while (true)
 	{
 		// corridor nav
-		while(true)
+		while (true)
 		{
 			motors->forward();
 			pause(50);
@@ -601,6 +599,7 @@ int Robot::pathfinding()
 				return 0;
 			}
 		}
+		// wall nav
 		while (true)
 		{
 			point1 = sensor->checkSonarSmart(10);
@@ -654,145 +653,120 @@ void Robot::remote()
 		state = readBluetooth();
 		switch (state)
 		{
-			case 0:
-				motors->stop();
-				// forward state
-				bluetooth->println("Robot: Moving Forward");
-				// Checks surroundings before starting
+		case 0:
+			motors->stop();
+			// forward state
+			bluetooth->println("Robot: Moving Forward");
+			// Checks surroundings before starting
+			sensor->forwardSweep(points);
+			if (points[0] < 4 || points[4] < 4 || points[1] < 4 || points[3] < 4 || points[2] < 5)
+			{
+				break;
+			}
+			// sets motors to full forward
+			motors->forward();
+			while (true)
+			{
+				// checks 5 points
 				sensor->forwardSweep(points);
-				if (points[0] < 4 || points[4] < 4 || points[1] < 4 || points[3] < 4 || points[2] < 5)
+				// break cases
+				if (points[0] < 5 || points[4] < 5 || points[1] < 7 || points[3] < 7 || points[2] < 10 || bluetooth->available() > 0)
 				{
+					bluetooth->println("Exiting forward mode");
+					bluetooth->println(bluetooth->read());
+					// kills forward
+					motors->stop();
 					break;
 				}
-				// sets motors to full forward
-				motors->forward();
-				while(true)
-				{
-					// checks 5 points
-					sensor->forwardSweep(points);
-					// break cases
-					if (points[0] < 5 || points[4] < 5 || points[1] < 7 || points[3] < 7 || points[2] < 10 || bluetooth->available() > 0)
-					{
-						bluetooth->println("Exiting forward mode");
-						bluetooth->println(bluetooth->read());
-						// kills forward
-						motors->stop();
-						break;
-					}
-				}
-				// resets state
-				state = 9;
-				break;
-			case 1:
-				motors->stop();
-				// Back state
-				bluetooth->println("Robot: Moving Back");
-				// moves back at 50%
-				motors->back();
-				// resets state
-				state = 9;
-				break;
-			case 2:
-				motors->stop();
-				// left state
-				bluetooth->println("Robot: Moving Left");
-				// moves left at 50%
-				motors->left();
-				// resets state
-				state = 9;
-				break;
-			case 3:
-				motors->stop();
-				// Right state
-				bluetooth->println("Robot: Moving Right");
-				// moves right at 50%
-				motors->right();
-				// resets state
-				state = 9;
-				break;
-			case 4:
-				motors->stop();
-				// pathfinding state
-				bluetooth->println("Robot: Entering Pathfinding");
-				pathfinding();
-				// resets state
-				state = 9;
-				break;
-			case 5:
-				motors->stop();
-				// scanning state
-				bluetooth->println("Robot: Scanning");
-				// updates distances
-				sensor->fullSweep(distances, 0, 180);
-				pause(1);
-				// interates through distances
-				for(size_t i = 0; i < 179; ++i)
-				{
-					// format->prints the value
-					bluetooth->print("distance at ");
-					bluetooth->print(i);
-					bluetooth->print(" degrees is ");
-					bluetooth->println(distances[i]);
-				}
-				// resets servo
-				sensor->moveServo(90);
-				// resets state
-				state = 9;
-				break;
-			case 6:
-				bluetooth->println("Robot: Stopping");
-				motors->stop();
-				sensor->moveServo(90);
-				// resets state
-				state = 9;
-				break;
-			
-			default:
-				// resets state
-				state = 9;
-				break;
+			}
+			// resets state
+			state = 9;
+			break;
+		case 1:
+			motors->stop();
+			// Back state
+			bluetooth->println("Robot: Moving Back");
+			// moves back at 50%
+			motors->back();
+			// resets state
+			state = 9;
+			break;
+		case 2:
+			motors->stop();
+			// left state
+			bluetooth->println("Robot: Moving Left");
+			// moves left at 50%
+			motors->left();
+			// resets state
+			state = 9;
+			break;
+		case 3:
+			motors->stop();
+			// Right state
+			bluetooth->println("Robot: Moving Right");
+			// moves right at 50%
+			motors->right();
+			// resets state
+			state = 9;
+			break;
+		case 4:
+			motors->stop();
+			// pathfinding state
+			bluetooth->println("Robot: Entering Pathfinding");
+			pathfinding();
+			// resets state
+			state = 9;
+			break;
+		case 5:
+			motors->stop();
+			// scanning state
+			bluetooth->println("Robot: Scanning");
+			// updates distances
+			sensor->fullSweep(distances, 0, 180);
+			pause(1);
+			// interates through distances
+			for (size_t i = 0; i < 179; ++i)
+			{
+				// format->prints the value
+				bluetooth->print("distance at ");
+				bluetooth->print(i);
+				bluetooth->print(" degrees is ");
+				bluetooth->println(distances[i]);
+			}
+			// resets servo
+			sensor->moveServo(90);
+			// resets state
+			state = 9;
+			break;
+		case 6:
+			bluetooth->println("Robot: Stopping");
+			motors->stop();
+			sensor->moveServo(90);
+			// resets state
+			state = 9;
+			break;
+
+		default:
+			// resets state
+			state = 9;
+			break;
 		}
 	}
 }
 
 // Variable definition
 byte definedMotors[4] = {5, 8, 6, 11}; // motors
-byte definedMisc[3] = {2, 3, 4};       // servo, trig, echo
-byte comPins[2] = {13, 12};            // bluetooth
+byte definedMisc[3] = {2, 3, 4};	   // servo, trig, echo
+byte comPins[2] = {13, 12};			   // bluetooth
 
-// Creates instance of Robot named mike
-// Robot mike;
-
-// Sensor* melvin = NULL;
-// Motors* greg = NULL;
 Robot paul;
-
-// Sensor(byte *pins);
-	// void moveServo(byte degree);
-	// int pulseUltra();
-	// int checkSonarSmart(byte degree);
-	// int checkSonarDumb();
-	// void forwardSweep(int *points);
-	// void fullSweep(int *distances);
-
-// Motors(byte *motorPins);
-	// void pinModeReset();
-	// void forward(byte percent);
-	// void left();
-	// void right();
-	// void back(byte percent);
-	// void stop();
 
 void setup()
 {
 	paul.init(definedMotors, definedMisc, comPins);
-	// melvin = new Sensor(definedMisc);
-	// greg = new Motors(definedMotors);
-	// Serial.begin(9600);
 }
 
 void loop()
 {
 	paul.remote();
 }
-
