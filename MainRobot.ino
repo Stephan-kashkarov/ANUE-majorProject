@@ -370,7 +370,7 @@ void Motors::forward()
 	pinModeReset();
 	analogWrite(motorPin1A, 255);
 	digitalWrite(motorPin1B, LOW);
-	analogWrite(motorPin2A, 255 - 100);
+	analogWrite(motorPin2A, 255);
 	digitalWrite(motorPin2B, LOW);
 }
 
@@ -562,38 +562,32 @@ int Robot::pathfinding()
 			motors->forward();
 			pause(50);
 			check = sensor->checkSonarSmart(10);
-			if (check < 9)
+			if (check < 6)
 			{
+				while (sensor->checkSonarSmart(10) < 7)
+				{
+					motors->left();
+				}
 				motors->stop();
-				motors->left();
-				pause(300);
-				motors->stop();
-				continue;
 			}
 			pause(50);
 			check = sensor->checkSonarSmart(90);
-			if (check < 15)
+			if (check < 10)
 			{
 				motors->stop();
 				break;
 			}
 			pause(50);
 			check = sensor->checkSonarSmart(170);
-			if (check < 9)
+			if (check < 6)
 			{
+				while (sensor->checkSonarSmart(10) < 7)
+				{
+					motors->right();
+				}
 				motors->stop();
-				motors->right();
-				pause(300);
-				motors->stop();
-				continue;
 			}
 			pause(50);
-			check = sensor->checkSonarSmart(90);
-			if (check < 15)
-			{
-				motors->stop();
-				break;
-			}
 			if (bluetooth->available() > 0)
 			{
 				return 0;
@@ -604,6 +598,8 @@ int Robot::pathfinding()
 		{
 			point1 = sensor->checkSonarSmart(10);
 			point2 = sensor->checkSonarSmart(170);
+			sensor->moveServo(90);
+			pause(100);
 			if (point1 > point2)
 			{
 				motors->right();
@@ -612,7 +608,6 @@ int Robot::pathfinding()
 			{
 				motors->left();
 			}
-			sensor->moveServo(90);
 			while (sensor->checkSonarDumb() < 30)
 			{
 				pause(100);
