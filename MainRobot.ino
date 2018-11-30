@@ -562,35 +562,30 @@ int Robot::pathfinding()
 			motors->forward();
 			pause(50);
 			check = sensor->checkSonarSmart(10);
-			if (check < 6)
+			if (check < 7)
 			{
-				while (sensor->checkSonarSmart(10) < 7)
-				{
-					motors->left();
-				}
 				motors->stop();
+				motors->left();
+				pause(200);
+				motors->stop();
+				continue;
 			}
 			pause(50);
 			check = sensor->checkSonarSmart(90);
-			if (check < 10)
+			if (check < 15)
 			{
 				motors->stop();
 				break;
 			}
 			pause(50);
 			check = sensor->checkSonarSmart(170);
-			if (check < 6)
+			if (check < 5)
 			{
-				while (sensor->checkSonarSmart(10) < 7)
-				{
-					motors->right();
-				}
 				motors->stop();
-			}
-			pause(50);
-			if (bluetooth->available() > 0)
-			{
-				return 0;
+				motors->right();
+				pause(200);
+				motors->stop();
+				continue;
 			}
 		}
 		// wall nav
@@ -598,8 +593,6 @@ int Robot::pathfinding()
 		{
 			point1 = sensor->checkSonarSmart(10);
 			point2 = sensor->checkSonarSmart(170);
-			sensor->moveServo(90);
-			pause(100);
 			if (point1 > point2)
 			{
 				motors->right();
@@ -608,6 +601,7 @@ int Robot::pathfinding()
 			{
 				motors->left();
 			}
+			sensor->moveServo(90);
 			while (sensor->checkSonarDumb() < 30)
 			{
 				pause(100);
